@@ -1,0 +1,38 @@
+{
+  "name": "zk-stats-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "test": "dotenv -e .env.test next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@ezkljs/engine": "^10.2.9",
+    "@fortawesome/fontawesome-svg-core": "^6.5.1",
+    "@fortawesome/free-brands-svg-icons": "^6.5.1",
+    "@fortawesome/free-solid-svg-icons": "^6.5.1",
+    "@fortawesome/react-fontawesome": "^0.2.0",
+    "@supabase/supabase-js": "^2.39.1",
+    "next": "13.5.6",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-hook-form": "^7.49.0",
+    "react-select": "^5.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10",
+    "dotenv": "^16.3.1",
+    "dotenv-cli": "^7.3.0",
+    "eslint": "^8",
+    "eslint-config-next": "13.5.6",
+    "postcss": "^8",
+    "tailwindcss": "^3",
+    "typescript": "^5"
+  }
+}
