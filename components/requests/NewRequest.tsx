@@ -39,40 +39,53 @@ const NewRequestForm = (props: NewRequestProps) => {
     <div>
       <FormWrapper onSubmit={handleSubmit(onSubmit)}>
         <div
-          className="bg-gray-50 rounded p-4 mb-4 border-2 border-gray-100"
+          className="bg-indigo-100 rounded p-4 mb-4"
         >
         <FormItem>
           <div
-            className="mb-2 text-md font-medium text-gray-900" 
+            className="my-2 text-sm font-medium text-gray-900" 
           >
             Request Name
           </div>
           <FormInput
             errors={errors}
             errorMessage={'Just a test error'}
+            className="bg-indigo-100 border border-indigo-300 rounded w-full text-sm block p-2.5"
+            placeholder="The title of your computation request"
             {...register('title', { required: true })}
           />
         </FormItem>
         <FormItem>
+          <div
+            className="mb-2 text-sm font-medium text-gray-900" 
+          >
           Request Description
+          </div>
           <FormTextArea
             errors={errors}
             errorMessage="text area error"
+            className="bg-indigo-100 border border-indigo-300 rounded w-full text-sm block p-2.5"
+            placeholder="Describe what your computation is about"
             {...register('description', { required: true })}
           />
         </FormItem>
         </div>
         <div
-          className="bg-gray-50 rounded p-4 mb-4 border-2 border-gray-100"
+          className="bg-indigo-100 rounded p-4 mb-4"
         >
         <FormItem>
+          <div
+            className="my-2 text-sm font-medium text-gray-900" 
+          >
           Function to Compute
-          <p className="text-sm">Some help text here about function signature, data types...</p>
+          <p className="text-xs">Some help text here about function signature, data types...</p>
+
+          </div>
           {/* TODO SUPPORT TAB TO INDENT */}
           <FormTextArea
             errors={errors}
             errorMessage="text area error"
-            className="font-mono"
+            className="bg-indigo-100 border border-indigo-300 rounded w-full text-sm block p-2.5 font-mono"
             {...register('code', { required: true })}
           >
             def computation(s: State, data: list[torch.Tensor]) -&gt; torch.Tensor:&#13;&nbsp;&nbsp;Test

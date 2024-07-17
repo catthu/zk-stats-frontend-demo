@@ -53,3 +53,8 @@ export const convertRawRequestToFullRequest = (rawRequest: RawRequest): FullRequ
     resultApproved: rawRequest.result_approved,
   }
 }
+
+export type Breadcrumb = {
+  label: string;
+  href: string;
+}

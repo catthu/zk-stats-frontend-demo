@@ -2,7 +2,7 @@ import { useUser } from "@/utils/session";
 import { faCircle, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 
 const NavBar = () => {
   const [ showUserMenu, setShowUserMenu ] = useState<boolean>(false);
@@ -11,17 +11,19 @@ const NavBar = () => {
   }
   const user = useUser();
   return (
-    <div>
-      <div className="my-4 px-24 flex justify-between w-full">
-        <div>
+    <div
+      className="m-4 py-2 px-12 rounded bg-slate-800 text-white"
+    >
+      <div className="flex justify-between items-center w-full">
+        <NavBarItem>
           <Link href="/">Home</Link>
-        </div>
+        </NavBarItem>
         <div className="flex gap-4 items-center">
           {user && user.username}
           <div className="flex items-center hover:cursor-pointer" onClick={onUserMenuClick}>
             <span className="fa-layers fa-fw h-8 w-8" style={{ backgroundColor: 'transparent' }}>
-            <FontAwesomeIcon icon={faCircle} size="2x" className="text-blue-300 mx-auto w-full"/>
-            <FontAwesomeIcon icon={faUser} className="text-blue-800 mx-auto w-full"/>
+            <FontAwesomeIcon icon={faCircle} size="2x" className="text-white mx-auto w-full"/>
+            <FontAwesomeIcon icon={faUser} className="text-gray-800 mx-auto w-full"/>
             </span>
           </div>
         </div>
@@ -33,19 +35,26 @@ const NavBar = () => {
   )
 }
 
+const NavBarItem = ({ children }: {children: ReactNode}) => {
+  return (
+    <div
+      className="hover:underline"
+    >
+      {children}
+    </div>
+  )
+}
+
 type UserMenuProps = {
   authenticated: boolean;
 }
 
 const UserMenu = ({ authenticated }: UserMenuProps) => {
   return (
-    <div className="flex flex-col absolute right-0 bg-white px-4 py-4">
+    <div className="flex flex-col absolute right-0 bg-slate-800 p-2 m-4 rounded">
       <UserMenuItem label="Account" path="/" />
-      <hr />
       <UserMenuItem label="Notifications" path="/" />
-      <hr />
       <UserMenuItem label="Add a Dataset" path="/datasets/upload" />
-      <hr />
       {authenticated
       ? <UserMenuItem label="Sign Out" path="/auth/signout" />
       :
@@ -62,7 +71,7 @@ type UserMenuItemProps = {
 
 const UserMenuItem = ({ label, path }: UserMenuItemProps) => {
   return (
-    <Link href={path} className="px-8 py-4">
+    <Link href={path} className="px-8 py-4 hover:text-slate-800 hover:bg-indigo-50 rounded">
       { label }
     </Link>
   )

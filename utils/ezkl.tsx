@@ -111,3 +111,23 @@ function generateDataCommitmentForColumn(column: number[], scale: number) {
     const deserializedOutput = deserialize(output)
     return deserializedOutput[0][0] as string
 }
+
+export const extractResult = (proofFile: File) => {
+    if (proofFile) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const json = JSON.parse(e.target?.result as string)
+          console.log(json['pretty_public_inputs']['rescaled_outputs'].slice(1,))
+          return(json['pretty_public_inputs']['rescaled_outputs'].slice(1,))
+        } catch (error) {
+            console.log('b')
+          console.error('Error parsing JSON:', error)
+          return '';
+        }
+      }
+      reader.readAsText(proofFile)
+    }
+    console.log('a')
+    return '';
+  }

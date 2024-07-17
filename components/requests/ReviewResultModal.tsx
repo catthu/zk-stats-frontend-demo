@@ -13,7 +13,11 @@ const ReviewResultModal = (props: ReviewResultModalProps) => {
   const { onClose, onAccept, result } = props;
   return (
     <Modal title="Review Result" onClose={onClose}>
+      <div
+        className="text-gray-500"
+      >
       Please review the result below.
+      </div>
       <div className="bg-gray-200 rounded my-4 p-4">
           <div className="text-lg font-bold">
           <div className="bg-gray-100 rounded text-sm font-light p-2">
@@ -24,14 +28,16 @@ const ReviewResultModal = (props: ReviewResultModalProps) => {
       <div
         className="flex w-full gap-4"
       >
-      <Button
-        onClick={onAccept}
-      >Submit Result</Button>
-      <Button
-        variant={ButtonVariant.SECONDARY}
-      >
-        Request Further Review
-      </Button>
+      <div className="w-full flex justify-between mt-6">
+        <Button
+          variant={ButtonVariant.QUARTERY}
+        >
+          Request Further Review
+        </Button>
+        <Button
+          onClick={onAccept}
+        >Approve Result</Button>
+        </div>
       </div>
     </Modal>
   )

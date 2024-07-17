@@ -3,7 +3,8 @@
 import useMockData from "@/mocks";
 import { NewRequest } from "@/types/request";
 import { createClient } from '@supabase/supabase-js'
-import { generateJupyterNotebook } from "./notebook";
+import { generateProverNotebook } from "./notebook";
+import { Schema } from "@/types/dataset";
 
 const useMock = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,11 +22,17 @@ export enum APIEndPoints {
   UploadDataCommitment = 'upload_data_commitment',
   Requests = 'requests',
 
-  DownloadNotebook = 'download_notebook',
+  DownloadComputationNotebook = 'download_computation_notebook',
+  DownloadVerificationNotebook = 'download_verification_notebook',
   UploadNotebook = 'upload_noteobook',
   AcceptRequest = 'accept_request',
   SubmitRequestResult = 'submit_request_result',
   UploadProofAndAssets = 'upload_proof_and_assets',
+  DownloadProofAndAssets = 'download_proof_and_assets',
+  ApproveResult = 'accept_result',
+
+  CheckFileExists = 'check_file_exists',
+  DownloadDataCommitment = 'download_data_commitment',
 
   SignUp = 'signup',
   SignInWithPassword = 'siginin_with_password',
@@ -41,6 +48,9 @@ type AddDatasetOptions = {
   title: string;
   description: string;
   ownerId: string;
+  schema: Schema | null;
+  rows?: number;
+  columns?: number;
 }
 
 type UploadDataCommitmentOptions = {
@@ -77,7 +87,11 @@ type GetRequestsOptions = {
   datasetId: string;
 }
 
-type DownloadNotebookOptions = {
+type DownloadComputationNotebookOptions = {
+  requestId: string;
+}
+
+type DownloadVerificationNotebookOptions = {
   requestId: string;
 }
 
@@ -99,10 +113,28 @@ type UploadProofAndAssetsOptions = {
   datasetId: string;
   requestId: string;
   proofFile: File,
-  vkFile: File,
-  modelOnnxFile: File,
-  srsFile: File,
+  precalWitnessFile: File,
   settingsFile: File,
+}
+
+type DownloadProofAndAssetsOptions = {
+  datasetId: string;
+  requestId: string;
+  file: 'all' | 'proof' | 'precal' | 'settings'
+}
+
+type ApproveResultOptions = {
+  requestId: string; // TODO make it so that only request sender can approve
+}
+
+type CheckFileExistsOptions = {
+  bucketName: string;
+  filePath: string;
+  fileName: string;
+}
+
+type DownloadDataCommitmentOptions = {
+  datasetId: string;
 }
 
 export type Options = undefined
@@ -114,9 +146,14 @@ export type Options = undefined
   | NewRequestOptions
   | GetRequestOptions
   | GetRequestsOptions
-  | DownloadNotebookOptions
+  | DownloadComputationNotebookOptions
+  | DownloadVerificationNotebookOptions
   | SubmitRequestResultOptions
   | UploadProofAndAssetsOptions
+  | DownloadProofAndAssetsOptions
+  | ApproveResultOptions
+  | CheckFileExistsOptions
+  | DownloadDataCommitmentOptions
 
 
 export const api = async (
@@ -138,11 +175,17 @@ export const api = async (
     case APIEndPoints.AddRequest: return addRequest(options as NewRequestOptions);
     case APIEndPoints.Requests: return getRequests(options as GetRequestsOptions);
     // Data owner operations
-    case APIEndPoints.DownloadNotebook: return downloadNotebook(options as DownloadNotebookOptions);
+    case APIEndPoints.DownloadComputationNotebook: return downloadComputationNotebook(options as DownloadComputationNotebookOptions);
+    case APIEndPoints.DownloadVerificationNotebook: return downloadVerificationNotebook(options as DownloadVerificationNotebookOptions);
     case APIEndPoints.UploadNotebook: return uploadNotebook(options as UploadNotebookOptions);
     case APIEndPoints.AcceptRequest: return acceptRequest(options as AcceptRequestOptions);
     case APIEndPoints.SubmitRequestResult: return submitRequestResult(options as SubmitRequestResultOptions);
-    case APIEndPoints.UploadProofAndAssets: return uploadProofAndAssets(options as UploadProofAndAssetsOptions); // TODO options
+    case APIEndPoints.UploadProofAndAssets: return uploadProofAndAssets(options as UploadProofAndAssetsOptions);
+    case APIEndPoints.DownloadProofAndAssets: return downloadProofAndAssets(options as DownloadProofAndAssetsOptions);
+    case APIEndPoints.ApproveResult: return approveResult(options as ApproveResultOptions);
+    // Cryptographic assets
+    case APIEndPoints.CheckFileExists: return checkFileExists(options as CheckFileExistsOptions);
+    case APIEndPoints.DownloadDataCommitment: return downloadDataCommitment(options as DownloadDataCommitmentOptions);
     // AUTH
     case APIEndPoints.SignUp: return signUp(options as SignUpOptions);
     case APIEndPoints.SignInWithPassword: return signInWithPassword(options as SignInWithPasswordOptions);
@@ -179,6 +222,9 @@ const addDataset = async (options: AddDatasetOptions) => {
       title: options.title,
       description: options.description,
       owner_id: options.ownerId,
+      schema: options.schema,
+      rows: options.rows,
+      columns: options.columns
     })
   if (data) {
     return data;
@@ -225,7 +271,7 @@ const addRequest = async (options: NewRequest) => {
   }
 
   const uuid = crypto.randomUUID();
-  const notebook = await generateJupyterNotebook(options.code);
+  const notebook = await generateProverNotebook(options.code);
   const notebookBlob = new Blob([notebook], { type: 'application/x-ipynb+json' })
 
   const { data, error } = await supabase
@@ -276,7 +322,7 @@ const getRequests = async(options: GetRequestsOptions) => {
   }
 }
 
-const downloadNotebook = async ({ requestId }: DownloadNotebookOptions) => {
+const downloadComputationNotebook = async ({ requestId }: DownloadComputationNotebookOptions) => {
   if (!supabase) {
     return;
     // TODO error
@@ -318,13 +364,55 @@ const downloadNotebook = async ({ requestId }: DownloadNotebookOptions) => {
 
 }
 
+const downloadVerificationNotebook = async ({ requestId }: DownloadVerificationNotebookOptions) => {
+  if (!supabase) {
+    return;
+    // TODO error
+  }
+
+  const { data } = supabase.storage
+    .from('computations')
+    .getPublicUrl(`${requestId}-verification.ipynb`);
+
+  const { publicUrl } = data;
+
+  fetch(publicUrl)
+    .then(response => {
+      if (response.ok) return response.blob();
+      throw new Error('Network response was not ok.');
+    })
+    .then(blob => {
+      // Create an object URL for the blob object
+      const blobUrl = URL.createObjectURL(blob);
+    
+      // Create a temporary anchor element
+      const anchor = document.createElement('a');
+    
+      // Set the href to the object URL
+      anchor.href = blobUrl;
+      anchor.download = `${requestId}-verification.ipynb`; // Set the download attribute with the desired file name
+    
+      // Append the anchor to the body to make it clickable
+      document.body.appendChild(anchor);
+    
+      // Trigger the download by clicking the anchor
+      anchor.click();
+    
+      // Clean up by revoking the object URL and removing the anchor element
+      URL.revokeObjectURL(blobUrl);
+      anchor.remove();
+    })
+    .catch(error => console.error('Download failed:', error));
+
+}
+
 const uploadNotebook = async ({ requestId, code } : UploadNotebookOptions) => {
   if (!supabase) {
     return;
     // TODO error
   }
 
-  const notebook = await generateJupyterNotebook(code);
+  const notebook = await generateProverNotebook(code);
   const notebookBlob = new Blob([notebook], { type: 'application/x-ipynb+json' })
 
   const { data, error } = await supabase.storage
@@ -403,9 +491,7 @@ const uploadProofAndAssets = async ({
   datasetId,
   requestId,
   proofFile,
-  vkFile,
-  modelOnnxFile,
-  srsFile,
+  precalWitnessFile,
   settingsFile
 }: UploadProofAndAssetsOptions) => {
   if (!supabase) {
@@ -415,9 +501,7 @@ const uploadProofAndAssets = async ({
 
   const promises = [
     supabase.storage.from('proof_assets').upload(`${datasetId}/${requestId}/model.pf`, proofFile),
-    supabase.storage.from('proof_assets').upload(`${datasetId}/${requestId}/model.vk`, vkFile),
-    supabase.storage.from('proof_assets').upload(`${datasetId}/${requestId}/model.onnx`, modelOnnxFile),
-    //supabase.storage.from('proof_assets').upload(`${datasetId}/${requestId}/model.pf`, proofFile) // TODO ???
+    supabase.storage.from('proof_assets').upload(`${datasetId}/${requestId}/precal_witness.json`, precalWitnessFile),
     supabase.storage.from('proof_assets').upload(`${datasetId}/${requestId}/settings.json`, settingsFile)
   ];
   // const { data, error } = await supabase.storage
@@ -426,6 +510,159 @@ const uploadProofAndAssets = async ({
   // if (data) {
   //   return data
   // }
+}
+
+const downloadProofAndAssets = async ({
+  datasetId,
+  requestId,
+  file
+}: DownloadProofAndAssetsOptions) => {
+  if (!supabase) {
+    return;
+    // TODO error
+  }
+
+  const getPath = (file: 'all' | 'proof' | 'precal' | 'settings') => {
+    switch (file) {
+      case ('all'): return `${datasetId}/${requestId}`;
+      case ('proof'): return `${datasetId}/${requestId}/model.pf`;
+      case ('precal'): return `${datasetId}/${requestId}/precal_witness.json`;
+      case ('settings'): return `${datasetId}/${requestId}/settings.json`;
+      default: return `${datasetId}/${requestId}`;
+    }
+  }
+
+  const { data } = supabase.storage
+    .from('proof_assets')
+    .getPublicUrl(getPath(file));
+
+  const { publicUrl } = data;
+
+  fetch(publicUrl)
+    .then(response => {
+      if (response.ok) return response.blob();
+      throw new Error('Network response was not ok.');
+    })
+    .then(blob => {
+      // Create an object URL for the blob object
+      const blobUrl = URL.createObjectURL(blob);
+    
+      // Create a temporary anchor element
+      const anchor = document.createElement('a');
+    
+      // Set the href to the object URL
+      anchor.href = blobUrl;
+      anchor.download = `${datasetId}-datacommitment.json`; // Set the download attribute with the desired file name
+    
+      // Append the anchor to the body to make it clickable
+      document.body.appendChild(anchor);
+    
+      // Trigger the download by clicking the anchor
+      anchor.click();
+    
+      // Clean up by revoking the object URL and removing the anchor element
+      URL.revokeObjectURL(blobUrl);
+      anchor.remove();
+    })
+    .catch(error => console.error('Download failed:', error));
+}
+
+const approveResult = async ({
+  requestId,
+}: ApproveResultOptions) => {
+  if (!supabase) {
+    return;
+    // TODO error
+  }
+  const { data, error } = await supabase
+    .from('computations')
+    .update({
+      result_approved: true,
+    })
+    .match({
+      id: requestId
+    })
+
+  if (data) {
+    return data
+  }
+}
+
+const checkFileExists = async({
+  bucketName,
+  filePath,
+  fileName
+}: CheckFileExistsOptions) => {
+
+  // DO I NEED BUCKET NAME HERE?
+
+  if (!supabase) {
+    return;
+    // TODO error
+  }
+
+  try {
+
+    const { data, error } = await supabase
+      .storage
+      .from(bucketName)
+      .list(filePath)
+
+    console.log('dddd', bucketName, filePath, data)
+
+    if (error) {
+      console.error('Error listing files:', error)
+      return false
+    }
+
+    return data.some(file => file.name === fileName)
+  } catch (e) {
+    return false
+  }
+
+}
+
+const downloadDataCommitment = async ({
+  datasetId,
+}: DownloadDataCommitmentOptions) => {
+  if (!supabase) {
+    return;
+    // TODO error
+  }
+
+  const { data } = supabase.storage
+    .from('proof_assets')
+    .getPublicUrl(`${datasetId}/data_commitment.json`);
+
+  const { publicUrl } = data;
+
+  fetch(publicUrl)
+    .then(response => {
+      if (response.ok) return response.blob();
+      throw new Error('Network response was not ok.');
+    })
+    .then(blob => {
+      // Create an object URL for the blob object
+      const blobUrl = URL.createObjectURL(blob);
+    
+      // Create a temporary anchor element
+      const anchor = document.createElement('a');
+    
+      // Set the href to the object URL
+      anchor.href = blobUrl;
+      anchor.download = `${datasetId}-datacommitment.json`; // Set the download attribute with the desired file name
+    
+      // Append the anchor to the body to make it clickable
+      document.body.appendChild(anchor);
+    
+      // Trigger the download by clicking the anchor
+      anchor.click();
+    
+      // Clean up by revoking the object URL and removing the anchor element
+      URL.revokeObjectURL(blobUrl);
+      anchor.remove();
+    })
+    .catch(error => console.error('Download failed:', error));
 }
 
 const signUp = async ({ username, email, password }: SignUpOptions) => {

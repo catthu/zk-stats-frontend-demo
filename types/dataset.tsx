@@ -11,7 +11,7 @@ export type DatasetPreview = {
 }
 
 export type Dataset = DatasetPreview & {
-  schema?: []; // TODO
+  schema?: Record<string, any>;
   testDataUrl?: string;
   sourceDescription?: string;
   acknowledgement?: string;
@@ -19,6 +19,8 @@ export type Dataset = DatasetPreview & {
   glossary?: []; // TODO
   ownerId?: string;
   //discussionId?: number; // No discussion id here, just make it a foreign key on the discussion table
+  rows?: number;
+  columns?: number;
 }
 
 export type UserDatasetRequests = Array<UserDatasetRequest>;
@@ -35,6 +37,9 @@ export type DatasetResponse = {
   description: string;
   updated_at: string;
   owner_id: string;
+  schema?: Record<string, any>;
+  rows?: number;
+  columns?: number;
 }
 
 export const convertDatasetResponseToDataset = (datasetResponse: DatasetResponse): Dataset => {
@@ -45,5 +50,22 @@ export const convertDatasetResponseToDataset = (datasetResponse: DatasetResponse
     description: datasetResponse.description,
     updatedAt: datasetResponse.updated_at,
     ownerId: datasetResponse.owner_id,
+    schema: datasetResponse.schema,
+    rows: datasetResponse.rows,
+    columns: datasetResponse.columns,
   }
+}
+
+export type Schema = {
+  $schema: string;
+  title: string;
+  type: string;
+  properties: {
+    [key: string]: {
+      type: string;
+      description?: string;
+      format?: string;
+    };
+  };
+  required: string[];
 }

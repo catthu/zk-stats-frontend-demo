@@ -3,6 +3,10 @@
 @import 'tailwindcss/utilities';
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
+body {
+  background-color:   rgb(238 242 255);
+}
+
 /* Custom styles for the hover underline effect */
 .menu-item::after {
   content: '';

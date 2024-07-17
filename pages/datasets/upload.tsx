@@ -4,7 +4,7 @@ import FormWrapper, { FormFile, FormInput, FormItem, FormRadioSelect, FormTextAr
 import Hero from "@/components/common/Hero";
 import Layout from "@/components/common/Layout";
 import NavBar from "@/components/common/NavBar";
-import { Dataset } from "@/types/dataset";
+import { Dataset, Schema } from "@/types/dataset";
 import { APIEndPoints, api } from "@/utils/api";
 import { generateDataCommitment, initialize } from "@/utils/ezkl";
 import { useUser } from "@/utils/session";
@@ -35,13 +35,20 @@ enum GenerateDataCommitmentOptions {
   BROWSER = 'browser',
 }
 
+enum SchemaOptions {
+  TEXT = 'text',
+  JSON_FILE = 'json_file'
+}
+
 const UploadDataset = () => {
 
   const [ selectedDataCommitmentOption, setSelectedDataCommitmentOption ] = useState<GenerateDataCommitmentOptions>(GenerateDataCommitmentOptions.NOTEBOOK)
+  const [ schemaOption, setSchemaOption ] = useState<SchemaOptions>(SchemaOptions.TEXT);
   const [ dataFile, setDataFile ] = useState<File | null>();
   const [ dataCommitmentFile, setDataCommitmentFile ] = useState<File | null>();
   const [ redirecting, setRedirecting ] = useState<boolean>(false);
   const [ datasetId, setDatasetId ] = useState<string | null>();
+  const [ schema, setSchema ] = useState<Schema | null>(null);
   
   const { register, handleSubmit, formState } = useForm<Dataset>();
   const { errors } = formState;
@@ -61,6 +68,9 @@ const UploadDataset = () => {
       title: data.title,
       description: data.description,
       ownerId: user?.id,
+      schema,
+      rows: data.rows,
+      columns: data.columns,
     })
     if (dataCommitmentFile) {
       await api(APIEndPoints.UploadDataCommitment, {
@@ -110,6 +120,30 @@ const UploadDataset = () => {
               {...register('description', { required: true })}
             />
           </FormItem>
+          <FormItem>
+            <div
+              className="mb-2 text-md font-medium text-gray-900" 
+            >
+              Number of columns in this dataset
+            </div>
+            <FormInput
+              errors={errors}
+              errorMessage={'Just a test error'}
+              {...register('rows', { required: false })}
+            />
+          </FormItem>
+          <FormItem>
+            <div
+              className="mb-2 text-md font-medium text-gray-900" 
+            >
+              Number of rows in this dataset (excluding the headers)
+            </div>
+            <FormInput
+              errors={errors}
+              errorMessage={'Just a test error'}
+              {...register('columns', { required: false })}
+            />
+          </FormItem>
           </Card>
           <Card>
           <FormItem>
@@ -118,11 +152,45 @@ const UploadDataset = () => {
             >
               Data Schema
             </div>
-            <FormTextArea
-              errors={errors}
-              errorMessage="text area error"
-              {...register('schema', { required: true })}
-            />
+            <FormRadioSelect 
+                  options={[
+                    {
+                      value: SchemaOptions.TEXT,
+                      label: 'Paste the JSON schema',
+                    },
+                    {
+                      value: SchemaOptions.JSON_FILE,
+                      label: 'Upload JSON schema file',
+                    },
+                  ]}
+                  onChange={(o) => setSchemaOption(o.value as SchemaOptions)} // TODO fix
+                />
+            {schemaOption === SchemaOptions.TEXT &&
+              <FormTextArea
+                errors={errors}
+                errorMessage="text area error"
+                {...register('schema', { required: true })}
+              />
+            }
+            {schemaOption === SchemaOptions.JSON_FILE &&
+              <FormFile onChange={(e) => {
+                // TODO also option to copy paste
+                if (e.target.files) {
+                  const file = e.target.files[0];
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    try {
+                      //@ts-ignore
+                      const json = JSON.parse(event.target.result);
+                      setSchema(json);
+                    } catch (error) {
+                      console.error("Error parsing JSON:", error);
+                    }
+                  };
+                  reader.readAsText(file);
+                }
+              }} />
+            }
           </FormItem>
           </Card>
           <Card>

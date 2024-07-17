@@ -29,9 +29,6 @@ export const OwnerRequests = (props: OwnerRequestsProps) => {
     }
   }, [datasetId, setRequests])
 
-  const onNewRequestSubmit = () => {
-    setActiveView(ActiveView.RequestSubmitted)
-  }
 
   return (
     <Layout>

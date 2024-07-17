@@ -116,19 +116,23 @@ type FormFileProps = {
   errors?: any; //TODO
   errorMessage?: string;
   onChange?: (fileChangeEvent: ChangeEvent<HTMLInputElement>) => void;
+  fileName?: string;
+  children?: ReactNode;
 } & InputHTMLAttributes<HTMLInputElement>;
 
-export const FormFile = React.forwardRef<HTMLInputElement, FormFileProps>(({errors, errorMessage, onChange, ...props}: FormFileProps, ref) => {
+export const FormFile = React.forwardRef<HTMLInputElement, FormFileProps>(({errors, errorMessage, onChange, fileName, children, ...props}: FormFileProps, ref) => {
 
   return (
     <div>
       <input
         type="file"
         ref={ref}
-        className=""
+        className={`${children ? 'hidden': ''}`}
         {...props}
         onChange={onChange}
       />
+      {children && children}
+      {fileName && <span className="mt-2 text-sm text-gray-600">{fileName}</span>}
     </div>
   )
 })

@@ -1,9 +1,9 @@
 import Button, { ButtonVariant } from "@/components/common/Button";
-import Hero from "@/components/common/Hero";
+import Hero, { SmallHero } from "@/components/common/Hero";
 import Layout from "@/components/common/Layout";
 import NavBar from "@/components/common/NavBar";
 import { Dataset, convertDatasetResponseToDataset } from "@/types/dataset";
-import { FullRequest, convertRawRequestToFullRequest } from "@/types/request";
+import { Breadcrumb, FullRequest, convertRawRequestToFullRequest } from "@/types/request";
 import { APIEndPoints, api } from "@/utils/api";
 import { useUser } from "@/utils/session";
 import { GetServerSideProps } from "next";
@@ -12,7 +12,9 @@ import SubmitResultModal from "../../../../components/requests/SubmitResultModal
 import ReviewResultModal from "@/components/requests/ReviewResultModal";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileAlt } from "@fortawesome/free-solid-svg-icons";
+import { faCheckCircle, faCircleCheck, faFileAlt, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { extractResult } from "@/utils/ezkl";
+import { generateVerifierNotebook } from "@/utils/notebook";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { id, requestId } = context.params as {
@@ -52,7 +54,9 @@ type RequestDetailProps = {
 const RequestDetail = (props: RequestDetailProps) => {
   const { dataset, request } = props;
   const { id, title, description, testDataUrl, sourceDescription, acknowledgement, ownerId } = dataset;
-  const { isAccepted, isCompleted } = request;
+  const { isAccepted, isCompleted, resultApproved } = request;
+  const [ isReviewResultModalOpen, setIsReviewResultModalOpen ] = useState<boolean>(false);
+  const [ submitResultModalOpen, setSubmitResultModalOpen ] = useState<boolean>(false);
 
   const [statusColor, setStatusColor] = useState<string>("bg-gray-400");
   const [statusText, setStatusText] = useState<string>("Awaiting Confirmation")
@@ -61,20 +65,58 @@ const RequestDetail = (props: RequestDetailProps) => {
   const isDatasetOwner = ownerId === user?.id;
 
   useEffect(() => {
+    if (resultApproved) {
+      setStatusColor('bg-green-800');
+      setStatusText('Request Completed');
+      return;
+    }
     if (isCompleted) {
       setStatusColor('bg-green-400');
       setStatusText('Results Ready');
       return;
     }
     if (isAccepted) {
-      setStatusColor('bg-yellow-400');
+      setStatusColor('bg-yellow-400 text-gray-900');
       setStatusText('Confirmed, Awaiting Results');
     } 
   }, [isCompleted, isAccepted])
 
+  const onVerifierNotebookDownload = async () => {
+    const notebook = await generateVerifierNotebook(request.code);
+    const notebookBlob = new Blob([notebook], { type: 'application/x-ipynb+json' });
+    const url = URL.createObjectURL(notebookBlob);
+
+    console.log('verifier notebook gen')
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'verifier.ipynb'; // Set the desired file name
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  const breadcrumb: Array<Breadcrumb> = [{
+    label: dataset.title,
+    href: `/datasets/${dataset.id}`
+  }]
+
+  const onAcceptResult = async () => {
+    await api(APIEndPoints.ApproveResult, { requestId: request.id });
+    setIsReviewResultModalOpen(false);
+    window.location.reload();
+  }
+
+  const onAcceptRequest = async () => {
+    await api(APIEndPoints.AcceptRequest, { requestId: request.id })
+   // setRequest(data);
+   window.location.reload();
+  }
+
   const onNotebookDownload = async () => {
     try {
-      await api(APIEndPoints.DownloadNotebook, { requestId: request.id });
+      await api(APIEndPoints.DownloadComputationNotebook, { requestId: request.id });
     }
     catch (error) {
       const data = await api(APIEndPoints.UploadNotebook, {
@@ -82,29 +124,60 @@ const RequestDetail = (props: RequestDetailProps) => {
         code: request.code
       })
       if (data) {
-        await api(APIEndPoints.DownloadNotebook, { requestId: request.id });
+        await api(APIEndPoints.DownloadComputationNotebook, { requestId: request.id });
       }
     }
   }
 
+  const onSubmitResult = async ({
+    result,
+    proofFile,
+    precalWitnessFile,
+    settingsFile
+  }: onSubmitResultArgs) => {
 
+
+    if ( proofFile && precalWitnessFile && settingsFile ) {
+  
+      await api(APIEndPoints.UploadProofAndAssets, {
+        requestId: request.id,
+        proofFile,
+        precalWitnessFile,
+        settingsFile
+      }).then((data) => {
+        api(APIEndPoints.SubmitRequestResult, {
+          requestId: request.id,
+          result,
+        })
+      })
+    } else {
+      // TODO handle errors
+    }
+    setSubmitResultModalOpen(false);
+    window.location.reload();
+  } 
 
   return (
     <div>
  
       <NavBar />
-      <Hero header={ title } subheader={ description }/>
-      <Layout>
-        <div className="text-2xl font-bold">
-          Request: {request.title}
-          <div>
-            <div
-              className={`text-sm ${statusColor} rounded px-2 text-white inline-block`}
-            >
-              {statusText}
-            </div>
+      <SmallHero header={
+        <div className="flex gap-4 items-center">
+          { request.title }
+          <div
+            className={`text-sm ${statusColor} rounded px-2 text-white inline-block`}
+          >
+            {statusText}
           </div>
         </div>
+      } subheader={ request.description } breadcrumb={breadcrumb}/>
+      {isReviewResultModalOpen &&
+        <ReviewResultModal onClose={() => setIsReviewResultModalOpen(false)} onAccept={onAcceptResult} result={request.result}/>
+      }
+      {submitResultModalOpen &&
+        <SubmitResultModal onClose={() => setSubmitResultModalOpen(false)} onSubmit={onSubmitResult}/>
+      }
+      <Layout>
         <div className="my-4">
         {isDatasetOwner
 
@@ -112,33 +185,76 @@ const RequestDetail = (props: RequestDetailProps) => {
            : <ConsumerActionBar request={request} />
         }
         </div>
-        <div className="flex flex-row w-full gap-4">
-          <div className="flex-grow">
-          <div className="bg-gray-200 rounded my-4 p-4">
-            <div className="text-lg font-bold">
-            Request Code
-            <div className="bg-gray-100 rounded text-sm font-light p-2 font-mono whitespace-pre-line">
-              {request.code}
-            </div>
-            </div>
-          </div>
-          <div className="flex flex-col bg-gray-200 rounded my-4 p-4">
-            <div className="text-lg font-bold">
-            {isDatasetOwner ? 'Submitted Result' : 'Result'}
+        <div className="flex flex-col w-full gap-4">
+          <div className="flex flex-row w-full gap-4">
+          
+          {isCompleted &&
+          <div className="flex flex-col bg-gray-50 border-1 border-gray-200 rounded my-4 p-4 text-indigo-800 w-2/3">
+              <div className="flex items-center font-bold text-lg">
+                {isDatasetOwner ? 'Submitted Result' : 'Result'} {request.resultApproved ? <span className="text-xs text-green-900">&nbsp;<FontAwesomeIcon icon={faCheckCircle} /> (Verified)</span> : ""}
+              </div>
             <div className="bg-gray-100 rounded text-sm font-light p-2">
               {request.result}
             </div>
-            <div className="my-4">
+            <div className="flex mt-4 gap-2">
+              {!isDatasetOwner &&
+              <Button
+                variant={ButtonVariant.QUARTERY}
+                onClick={() => setIsReviewResultModalOpen(true)}
+              >
+                Review Result
+              </Button>
+              }
               <Button 
                 disabled={!request.isCompleted} 
-                variant={request.isCompleted ? ButtonVariant.PRIMARY : ButtonVariant.DISABLED}
-              >Verify Computation</Button>
-            </div>
+                variant={request.isCompleted ? ButtonVariant.QUARTERY : ButtonVariant.DISABLED}
+                onClick={onVerifierNotebookDownload}
+              >Download Verification Notebook</Button>
             </div>
           </div>
+          }
+          {isCompleted &&
+          <div className="w-1/3">
+            <CryptographicAssets datasetId={dataset.id} requestId={request.id} resultReady={request.isCompleted}/>
           </div>
-          <div className="w-1/4">
-            <CryptographicAssets requestId={request.id} resultReady={request.isCompleted}/>
+          }
+          </div>
+         
+          <div className="bg-gray-50 border-1 border-gray-200 rounded my-4 p-4">
+            <div className="text-lg font-bold text-indigo-800 my-2">
+            Request Code
+            </div>
+            <div className="bg-gray-100 rounded text-sm font-light p-6 font-mono whitespace-pre-line text-gray-800 border-1 border-gray-200">
+              {request.code}
+            </div>
+            <div className="flex gap-2 mt-4 mb-2">
+            {(isDatasetOwner && !isAccepted) &&
+            <div>
+              <Button
+                variant={ButtonVariant.QUARTERY}
+                onClick={onAcceptRequest}
+              >
+                Accept Computation Request
+              </Button>
+            </div>
+            }
+            {(isDatasetOwner && isAccepted && !isCompleted) &&
+            <div>
+              <Button
+                variant={ButtonVariant.QUARTERY}
+                onClick={() => setSubmitResultModalOpen(true)}
+              >
+                Submit Result
+              </Button>
+            </div>
+            }
+            <div>
+              <Button
+                onClick={onNotebookDownload}
+                variant={ButtonVariant.QUARTERY}
+              >Download Jupyter Notebook</Button>
+            </div>
+          </div>
           </div>
         </div>
       </Layout>
@@ -152,21 +268,16 @@ type ActionBarProps = {
 }
 
 type onSubmitResultArgs = {
+  result: string;
   proofFile: File | null, // TODO remove null
-  vkFile: File | null, // TODO remove null
-  modelOnnxFile: File | null, // TODO remove null
-  srsFile: File | null, // TODO remove null
+  precalWitnessFile: File | null, // TODO remove null
   settingsFile: File | null, // TODO remove null
-}
-
-const extractResult = (proofFile: File) => {
-  return;
 }
 
 const OwnerActionBar = (props: ActionBarProps) => {
   const { datasetId, request: initialRequest } = props;
   const [ request, setRequest ] = useState<FullRequest>(initialRequest);
-  const { isAccepted } = request;
+  const { isAccepted, isCompleted, resultApproved } = request;
   const [ submitResultModalOpen, setSubmitResultModalOpen ] = useState<boolean>(false);
 
   const onAcceptRequest = async () => {
@@ -185,90 +296,71 @@ const OwnerActionBar = (props: ActionBarProps) => {
   // TODO don't upload srsFile, make them select from a list
 
   const onSubmitResult = async ({
+    result,
     proofFile,
-    vkFile,
-    modelOnnxFile,
-    srsFile,
+    precalWitnessFile,
     settingsFile
   }: onSubmitResultArgs) => {
-    // TODO extract results instead (and maybe upload?? or don't??)
-    // await api(APIEndPoints.SubmitRequestResult, { requestId: request.id, result })
 
-    if ( proofFile && vkFile && modelOnnxFile && srsFile && settingsFile ) {
+
+    if ( proofFile && precalWitnessFile && settingsFile ) {
   
       await api(APIEndPoints.UploadProofAndAssets, {
         datasetId,
         requestId: request.id,
         proofFile,
-        vkFile,
-        modelOnnxFile,
-        srsFile,
+        precalWitnessFile,
         settingsFile
+      }).then((data) => {
+        api(APIEndPoints.SubmitRequestResult, {
+          requestId: request.id,
+          result,
+        })
       })
     } else {
       // TODO handle errors
     }
     setSubmitResultModalOpen(false);
+    window.location.reload();
   } 
-
-  const onNotebookDownload = async () => {
-    try {
-      await api(APIEndPoints.DownloadNotebook, { requestId: request.id });
-    }
-    catch (error) {
-      const data = await api(APIEndPoints.UploadNotebook, {
-        requestId: request.id,
-        code: request.code
-      })
-      if (data) {
-        await api(APIEndPoints.DownloadNotebook, { requestId: request.id });
-      }
-    }
-  }
 
   return (
     <div>
       {submitResultModalOpen &&
         <SubmitResultModal onClose={() => setSubmitResultModalOpen(false)} onSubmit={onSubmitResult}/>
       }
-      <div
-        className="flex gap-4"
-      >
-        {!isAccepted &&
-          <div>
-            <Button
-              onClick={onAcceptRequest}
-            >
-              Accept Computation Request
-            </Button>
-          </div>
-          }
-        {isAccepted &&
-          <div>
-            <Button
-              onClick={() => setSubmitResultModalOpen(true)}
-            >Submit Result</Button>
-          </div>
-        }
-        <div>
-          <Button
-            onClick={onNotebookDownload}
-            variant={ButtonVariant.SECONDARY}
-          >Download Jupyter Notebook</Button>
-        </div>
+      {!isAccepted &&
+      <div className="flex w-full rounded-lg bg-gray-500 py-8 px-6 text-stone-50">
+        This computation request is awaiting your review.
       </div>
+      }
+      {(isAccepted && !isCompleted) &&
+      <div className="flex w-full rounded-lg bg-yellow-400 py-8 px-6 text-stone-50 font-bold">
+        You have accepted this computation request. Please download the Jupyter Notebook and follow the instructions to run the computation.
+      </div>
+      }
+      {(isCompleted && !resultApproved) &&
+      <div className="flex w-full rounded-lg bg-green-400 py-8 px-6 text-stone-50 font-bold">
+        You submitted the result for this computation and are currently awaiting verification.
+      </div>
+      }
+      {(resultApproved) &&
+      <div className="flex w-full rounded-lg bg-green-800 py-8 px-6 text-stone-50 font-bold">
+        This request has been completed.
+      </div>
+      }
     </div>
   )
 }
 
 const ConsumerActionBar = (props: ActionBarProps) => {
   const { request } = props;
-  const { isCompleted } = request;
+  const { isCompleted, isAccepted, resultApproved } = request;
   const [ isReviewResultModalOpen, setIsReviewResultModalOpen ] = useState<boolean>(false);
 
   const onNotebookDownload = async () => {
     try {
-      await api(APIEndPoints.DownloadNotebook, { requestId: request.id });
+      await api(APIEndPoints.DownloadComputationNotebook, { requestId: request.id });
     }
     catch (error) {
       const data = await api(APIEndPoints.UploadNotebook, {
@@ -276,16 +368,35 @@ const ConsumerActionBar = (props: ActionBarProps) => {
         code: request.code
       })
       if (data) {
-        await api(APIEndPoints.DownloadNotebook, { requestId: request.id });
+        await api(APIEndPoints.DownloadComputationNotebook, { requestId: request.id });
       }
     }
   }
 
-  const onAcceptResult = () => {
-
+  const onAcceptResult = async () => {
+    await api(APIEndPoints.ApproveResult, { requestId: request.id });
+    setIsReviewResultModalOpen(false);
+    window.location.reload();
   }
 
   const onClickVerifyComputation = () => {
+
+  }
+
+  const onVerifierNotebookDownload = async () => {
+    const notebook = await generateVerifierNotebook(request.code);
+    const notebookBlob = new Blob([notebook], { type: 'application/x-ipynb+json' });
+    const url = URL.createObjectURL(notebookBlob);
+
+    console.log('verifier notebook gen')
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'verifier.ipynb'; // Set the desired file name
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 
   }
 
@@ -293,10 +404,30 @@ const ConsumerActionBar = (props: ActionBarProps) => {
     <div
       className="flex gap-4"
     >
+      {!isAccepted &&
+      <div className="flex w-full rounded-lg bg-gray-500 py-8 px-6 text-stone-50">
+        The owner of this dataset has not reviewed this request yet.
+      </div>
+      }
+      {(isAccepted && !isCompleted) &&
+      <div className="flex w-full rounded-lg bg-yellow-400 py-8 px-6 text-gray-900 font-bold">
+        This request has been accepted by the dataset owner. The result and proof will be uploaded here later.
+      </div>
+      }
+      {(isCompleted && !resultApproved) &&
+      <div className="flex w-full rounded-lg bg-green-400 py-8 px-6 text-gray-50 font-bold items-center gap-2">
+        <FontAwesomeIcon icon={faCircleCheck} /> This dataset owner has submitted the result and is awaiting a review.
+      </div>
+      }
+      {resultApproved &&
+      <div className="flex w-full rounded-lg bg-green-800 py-8 px-6 text-gray-50 font-bold items-center gap-2">
+        <FontAwesomeIcon icon={faCircleCheck} /> This request has been completed.
+      </div>
+      }
       {isReviewResultModalOpen &&
         <ReviewResultModal onClose={() => setIsReviewResultModalOpen(false)} onAccept={onAcceptResult} result={request.result}/>
       }
-      {isCompleted &&
+      {/* {isCompleted &&
       <>
         <div>
           <Button
@@ -305,41 +436,101 @@ const ConsumerActionBar = (props: ActionBarProps) => {
         </div>
         <div>
           <Button
-            onClick={onClickVerifyComputation}
+            onClick={onVerifierNotebookDownload}
           >
-            Verify Computation
+            Download Verification Notebook
           </Button>
         </div>
       </>
-      }
-      <div>
-        <Button
-          onClick={onNotebookDownload}
-          variant={ButtonVariant.SECONDARY}
-        >Download Jupyter Notebook</Button>
-      </div>
+      } */}
     </div>
   )
 }
 
 type CryptographicAssetsProps = {
+  datasetId: string;
   requestId: string;
   resultReady?: boolean;
 }
 
-const CryptographicAssets = ({ requestId, resultReady = true } : CryptographicAssetsProps) => {
+const CryptographicAssets = ({ datasetId, requestId, resultReady = true } : CryptographicAssetsProps) => {
+  const [ doesDataCommitmentExist, setDoesDataCommitmentExist ] = useState<boolean | null>(null);
+  const [ doesProofExist, setDoesProofExist ] = useState<boolean | null>(null);
+  const [ doesPrecalWitnessExist, setDoesPrecalWitnessExist ] = useState<boolean | null>(null);
+  const [ doSettingsExist, setDoSettingsExist ] = useState<boolean | null>(null);
+  useEffect(() => {
+    api(APIEndPoints.CheckFileExists, {
+      bucketName: 'proof_assets',
+      filePath: `${datasetId}`,
+      fileName: 'data_commitment.json'
+   }).then(result => setDoesDataCommitmentExist(result))
+   api(APIEndPoints.CheckFileExists, {
+    bucketName: 'proof_assets',
+    filePath: `${datasetId}/${requestId}`,
+    fileName: 'model.pf'
+   }).then(result => setDoesProofExist(result))
+   api(APIEndPoints.CheckFileExists, {
+    bucketName: 'proof_assets',
+    filePath: `${datasetId}/${requestId}`,
+    fileName: 'precal_witness.json'
+   }).then(result => setDoesPrecalWitnessExist(result))
+   api(APIEndPoints.CheckFileExists, {
+    bucketName: 'proof_assets',
+    filePath: `${datasetId}/${requestId}`,
+    fileName: 'settings.json'
+   }).then(result => setDoSettingsExist(result))
+  })
   return (
-    <div className="bg-gray-200 rounded my-4 p-4">
-      <div className="text-lg font-bold">
+    <div className="bg-gray-50 border-1 border-gray-200 rounded my-4 p-4">
+      <div className="text-lg font-bold text-indigo-800 my-2">
         Cryptographic Assets
       </div>
       {resultReady ? (
       <div className="flex flex-col">
-        <Link href=""><FontAwesomeIcon icon={faFileAlt} /> Proof</Link>
-        <Link href=""><FontAwesomeIcon icon={faFileAlt} /> Verification Key</Link>
-        <Link href=""><FontAwesomeIcon icon={faFileAlt} /> Model Onnx</Link>
-        <Link href=""><FontAwesomeIcon icon={faFileAlt} /> Srs</Link>
-        <Link href=""><FontAwesomeIcon icon={faFileAlt} /> Settings</Link>
+        {doesDataCommitmentExist
+        ? <div 
+          className="hover:cursor-pointer"
+          onClick={() => api(APIEndPoints.DownloadDataCommitment, { datasetId })}><FontAwesomeIcon icon={faFileAlt}
+        /> Data Commitment</div>
+        : <div>
+            {doesDataCommitmentExist === null
+              ? <span><FontAwesomeIcon icon={faFileAlt} /> Checking...</span>
+              : <span className="text-red-400"><FontAwesomeIcon icon={faWarning} /> Missing data commitment</span>}
+          </div>
+        }
+        {doesProofExist
+        ? <div
+          className="hover:cursor-pointer"
+          onClick={() => api(APIEndPoints.DownloadProofAndAssets, {datasetId, requestId, file: 'proof'})}
+        ><FontAwesomeIcon icon={faFileAlt} /> Proof</div>
+        : <div>
+            {doesProofExist === null
+              ? <span><FontAwesomeIcon icon={faFileAlt} /> Checking...</span>
+              : <span className="text-red-400"><FontAwesomeIcon icon={faWarning} /> Missing proof</span>}
+          </div>
+        }
+        {doesPrecalWitnessExist
+        ? <div
+          className="hover:cursor-pointer"
+          onClick={() => api(APIEndPoints.DownloadProofAndAssets, {datasetId, requestId, file: 'precal'})}
+        ><FontAwesomeIcon icon={faFileAlt} /> Precal witness</div>
+        : <div>
+            {doesPrecalWitnessExist === null
+              ? <span><FontAwesomeIcon icon={faFileAlt} /> Checking...</span>
+              : <span className="text-red-400"><FontAwesomeIcon icon={faWarning} /> Missing precal witness</span>}
+          </div>
+        }
+        {doSettingsExist
+        ? <div
+          className="hover:cursor-pointer"
+          onClick={() => api(APIEndPoints.DownloadProofAndAssets, {datasetId, requestId, file: 'settings'})}
+        ><FontAwesomeIcon icon={faFileAlt} /> Settings</div>
+        : <div>
+            {doSettingsExist === null
+              ? <span><FontAwesomeIcon icon={faFileAlt} /> Checking...</span>
+              : <span className="text-red-400"><FontAwesomeIcon icon={faWarning} /> Missing settings</span>}
+          </div>
+        }
       </div>
       )
       : (
