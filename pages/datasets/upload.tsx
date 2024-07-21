@@ -68,7 +68,8 @@ const UploadDataset = () => {
       title: data.title,
       description: data.description,
       ownerId: user?.id,
-      schema,
+      //@ts-ignore
+      schema: schemaOption === SchemaOptions.TEXT ? data.schema : schema,
       rows: data.rows,
       columns: data.columns,
     })
