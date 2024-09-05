@@ -79,7 +79,7 @@ const RequestDetail = (props: RequestDetailProps) => {
       setStatusColor('bg-yellow-400 text-gray-900');
       setStatusText('Confirmed, Awaiting Results');
     } 
-  }, [isCompleted, isAccepted])
+  }, [isCompleted, isAccepted, resultApproved])
 
   const onVerifierNotebookDownload = async () => {
     const notebook = await generateVerifierNotebook(request.code);

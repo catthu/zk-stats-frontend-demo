@@ -36,8 +36,7 @@ export const mockDataset: Dataset = {
     features: 10000000,
   },
   testDataUrl: 'https://example.com',
-  schema: [
-    // TODO ADD
+  schema: [{}
   ],
   sourceDescription: 'Where we got this data from',
   acknowledgement: 'Thank you PSE!',  

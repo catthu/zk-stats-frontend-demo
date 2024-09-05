@@ -44,7 +44,7 @@ export const UserRequests = ({ userId, datasetId, isDataOwner }: UserRequestsPro
       }
     };
     fetchRequests();
-  }, [userId, datasetId]);
+  }, [userId, datasetId, isDataOwner]);
 
   const handleNewRequestSubmit = useCallback(() => {
     setActiveView(ActiveView.RequestSubmitted);

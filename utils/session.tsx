@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./api"
 import { Session, User } from "@supabase/supabase-js";
 
@@ -27,7 +27,9 @@ export const useUser = () => {
     }
   }, [user, setUserData])
 
-  return {...user, username: userData?.username};
+  const memoizedUser = useMemo(() => ({ ...user, username: userData?.username }), [user, userData]);
+
+  return memoizedUser;
 }
 
 export const useSession = async () => {

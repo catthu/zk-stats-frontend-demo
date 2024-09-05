@@ -107,6 +107,7 @@ const UploadDataset = () => {
               errors={errors}
               errorMessage={'Just a test error'}
               {...register('title', { required: true })}
+              placeholder="Give this dataset a descriptive name"
             />
           </FormItem>
           <FormItem>
@@ -119,6 +120,7 @@ const UploadDataset = () => {
               errors={errors}
               errorMessage="text area error"
               {...register('description', { required: true })}
+              placeholder="Describe this dataset in as much details as possible, e.g. How was it obtained? When was data collection?"
             />
           </FormItem>
           <FormItem>
@@ -131,18 +133,20 @@ const UploadDataset = () => {
               errors={errors}
               errorMessage={'Just a test error'}
               {...register('rows', { required: false })}
+              placeholder="Number of columns"
             />
           </FormItem>
           <FormItem>
             <div
               className="mb-2 text-md font-medium text-gray-900" 
             >
-              Number of rows in this dataset (excluding the headers)
+              Number of rows in this dataset
             </div>
             <FormInput
               errors={errors}
               errorMessage={'Just a test error'}
               {...register('columns', { required: false })}
+              placeholder="Number of rows, excluding the headers"
             />
           </FormItem>
           </Card>
@@ -153,11 +157,16 @@ const UploadDataset = () => {
             >
               Data Schema
             </div>
+            <div
+              className="text-xs text-gray-600"
+            >
+              Please upload the schema of your data in the <Link href="/" className="underline">JSON schema format</Link>.
+            </div>
             <FormRadioSelect 
                   options={[
                     {
                       value: SchemaOptions.TEXT,
-                      label: 'Paste the JSON schema',
+                      label: 'Paste as text',
                     },
                     {
                       value: SchemaOptions.JSON_FILE,
@@ -171,6 +180,7 @@ const UploadDataset = () => {
                 errors={errors}
                 errorMessage="text area error"
                 {...register('schema', { required: true })}
+                placeholder="Copy and paste your data schema here in the JSON schema format"
               />
             }
             {schemaOption === SchemaOptions.JSON_FILE &&
@@ -202,9 +212,18 @@ const UploadDataset = () => {
                 Generate data commitment
               </div>
               <div>
-                <div>
-                Some text to explain why
-                </div>
+              <div
+                className="text-xs text-gray-600"
+              >
+                To ensure that future computation requests are run on this dataset and not a different dataset or a modified version, we will generate
+                a set of commitment hash based on the data. Please select how you want to generate this data commitment.
+              </div>
+              <div
+                className="text-xs text-gray-600"
+              >
+                In browser generation is the most convenient option, but will require you to give your browser access to the data. The data will never be uploaded.
+                For a more trustless approach, you can download a Jupyter Notebook and generate the data commitment locally.
+              </div>
                 <FormRadioSelect 
                   options={[
                     {
@@ -249,12 +268,17 @@ const UploadDataset = () => {
                 selectedDataCommitmentOption === GenerateDataCommitmentOptions.NOTEBOOK &&
                 (
                   <div className="flex flex-col">
-                    1. Download the Jupyter Notebook and follow its instruction to generate the data commitment.
-                    <Button onClick={(e) => {
-                      e.preventDefault();
-                      downloadDataCommitmentNotebook();
-                    }}> Download</Button>
-                    2. Upload the output data_commitment.json file
+                    <p>
+                    1. Download the <a
+                      className="cursor-pointer underline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        downloadDataCommitmentNotebook();
+                      }}
+                    >Jupyter Notebook</a>
+                    </p>
+                    <p>2. Follow its instruction to generate the data commitment.</p>
+                    <p>3. Upload the output data_commitment.json file</p>
                     <FormFile onChange={(e) => e.target.files && setDataCommitmentFile(e.target.files[0])}/>
                   </div>
                 )

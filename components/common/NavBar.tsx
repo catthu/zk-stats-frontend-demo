@@ -15,9 +15,14 @@ const NavBar = () => {
       className="m-4 py-2 px-12 rounded bg-slate-800 text-white"
     >
       <div className="flex justify-between items-center w-full">
+        <div className="flex flex-column gap-8">
         <NavBarItem>
           <Link href="/">Home</Link>
         </NavBarItem>
+        <NavBarItem>
+          <Link href="/about">About</Link>
+        </NavBarItem>
+        </div>
         <div className="flex gap-4 items-center">
           {user && user.username}
           <div className="flex items-center hover:cursor-pointer" onClick={onUserMenuClick}>
@@ -52,8 +57,8 @@ type UserMenuProps = {
 const UserMenu = ({ authenticated }: UserMenuProps) => {
   return (
     <div className="flex flex-col absolute right-0 bg-slate-800 p-2 m-4 rounded">
-      <UserMenuItem label="Account" path="/" />
-      <UserMenuItem label="Notifications" path="/" />
+      {authenticated && <UserMenuItem label="Account" path="/" />}
+      {authenticated && <UserMenuItem label="Notifications" path="/" />}
       <UserMenuItem label="Add a Dataset" path="/datasets/upload" />
       {authenticated
       ? <UserMenuItem label="Sign Out" path="/auth/signout" />
