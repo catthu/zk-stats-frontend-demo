@@ -7,10 +7,7 @@ type DatasetCardProps = {
 
 export const DatasetCard = (props: DatasetCardProps) => {
   const { dataset } = props;
-  const { id, title, description, updatedAt } = dataset;
-
-
-  console.log(dataset)
+  const { id, title, subtitle, description, updatedAt } = dataset;
   
   return (
     <Link href={`/datasets/${id}`}>
@@ -23,7 +20,9 @@ export const DatasetCard = (props: DatasetCardProps) => {
         <div className="font-semibold text-lg text-slate-800 mb-2">
           { title }
         </div>
-        <p className="text-gray-600">{ description }</p>
+        <p className="text-gray-600">
+          {description.length > 100 ? `${description.slice(0, 100)}...` : description}
+        </p>
         <p className="text-gray-400 text-xs my-2">Updated on {updatedAt}</p>
       </div>
     </div>

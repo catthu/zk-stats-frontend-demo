@@ -8,6 +8,7 @@ export type DatasetPreview = {
     rows: number;
     features: number;
   };
+  subtitle?: string;
 }
 
 export type Dataset = DatasetPreview & {
@@ -40,6 +41,7 @@ export type DatasetResponse = {
   schema?: Record<string, any>;
   rows?: number;
   columns?: number;
+  subtitle?: string;
 }
 
 export const convertDatasetResponseToDataset = (datasetResponse: DatasetResponse): Dataset => {
@@ -53,6 +55,7 @@ export const convertDatasetResponseToDataset = (datasetResponse: DatasetResponse
     schema: datasetResponse.schema,
     rows: datasetResponse.rows,
     columns: datasetResponse.columns,
+    subtitle: datasetResponse.subtitle,
   }
 }
 

@@ -63,7 +63,7 @@ const UserMenu = ({ authenticated }: UserMenuProps) => {
       {authenticated
       ? <UserMenuItem label="Sign Out" path="/auth/signout" />
       :
-        <UserMenuItem label="Sign Up" path="/auth" />
+        <UserMenuItem label="Sign In" path="/auth" />
       }
     </div>
   )

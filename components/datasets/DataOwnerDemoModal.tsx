@@ -3,6 +3,8 @@ import Button, { ButtonVariant } from "../common/Button";
 import Modal from "../common/Modal";
 import { useUser } from "@/utils/session";
 import { api, APIEndPoints } from "@/utils/api";
+import { useState } from "react";
+import { useRouter } from "next/router";
 
 const DEMO_DATA_OWNER_EMAIL_ADDRESS = 'catthunh+zkstatsdataprovider@gmail.com'
 const DEMO_DATA_OWNER_PASSWORD = '123456789'
@@ -14,8 +16,28 @@ type DataOwnerDemoModalProps = {
 const DataOwnerDemoModal = ({
   onClose
 }: DataOwnerDemoModalProps) => {
-
+  const [loggedIn, setLoggedIn] = useState(false);
   const user = useUser()
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    if (user) {
+      await api(APIEndPoints.SignOut)
+    }
+    await api(APIEndPoints.SignInWithPassword, {
+      usernameOrEmail: DEMO_DATA_OWNER_EMAIL_ADDRESS,
+      password: DEMO_DATA_OWNER_PASSWORD
+    })
+    setLoggedIn(true);
+  }
+
+  const handleGoHome = () => {
+    if (onClose) {
+      onClose();
+    }
+    router.push('/');
+  }
+
   return (
     <Modal
       title="Explore as Data Owner"
@@ -42,24 +64,23 @@ const DataOwnerDemoModal = ({
       </ul>
       <hr />
       <div className="w-full flex justify-end mt-6">
-        <Button
-          variant={ButtonVariant.PRIMARY}
-          onClick={async () => {
-            if (user) {
-              await api(APIEndPoints.SignOut)
-              await api(APIEndPoints.SignInWithPassword, {
-                usernameOrEmail: DEMO_DATA_OWNER_EMAIL_ADDRESS,
-                password: DEMO_DATA_OWNER_PASSWORD
-              })
-              window.location.reload()
-            }
-            await api(APIEndPoints.SignInWithPassword, {
-              usernameOrEmail: DEMO_DATA_OWNER_EMAIL_ADDRESS,
-              password: DEMO_DATA_OWNER_PASSWORD
-            })
-            setTimeout(() => window.location.reload(), 1000)
-          }}
-        >Log in to the demo account</Button>
+        {!loggedIn ? (
+          <Button
+            variant={ButtonVariant.PRIMARY}
+            onClick={handleLogin}
+          >Log in to the demo account</Button>
+        ) : (
+          <div className="text-center w-full">
+            <p className="mb-4">You have successfully logged in to the demo account.</p>
+            <Button
+              variant={ButtonVariant.SECONDARY}
+              onClick={handleGoHome}
+              className="text-blue-600 hover:underline"
+            >
+              Go back to home
+            </Button>
+          </div>
+        )}
       </div>
     </Modal>
   )

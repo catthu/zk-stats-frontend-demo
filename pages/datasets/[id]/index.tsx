@@ -4,15 +4,16 @@ import { GetServerSideProps } from "next";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { UserRequests } from "@/components/requests/UserRequests";
 import Button from "@/components/common/Button";
-import { Dataset, convertDatasetResponseToDataset } from "@/types/dataset";
+import { Dataset, Schema, convertDatasetResponseToDataset } from "@/types/dataset";
 import Layout from "@/components/common/Layout";
 import NavBar from "@/components/common/NavBar";
 import { useUser } from "@/utils/session";
 import { OwnerRequests } from "@/components/requests/OwnerRequests";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faColumns, faFileAlt, faSquare, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FormFile } from "@/components/common/Form";
+import { faColumns, faEdit, faFileAlt, faPen, faPencilAlt, faSquare, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FormFile, FormItem, FormRadioSelect, FormTextArea } from "@/components/common/Form";
+import { useForm } from "react-hook-form";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { id } = context.params as {
@@ -48,7 +49,7 @@ enum MenuTab {
 }
 
 const DatasetPage = ({ dataset }: DatasetPageProps) => {
-  const { id, title, description, testDataUrl, sourceDescription, acknowledgement, ownerId, schema, rows, columns } = dataset;
+  const { id, title, subtitle, description, testDataUrl, sourceDescription, acknowledgement, ownerId, schema, rows, columns } = dataset;
   const [ activeTab, setActiveTab ] = useState<MenuTab>(MenuTab.About);
 
   const user = useUser();
@@ -58,14 +59,22 @@ const DatasetPage = ({ dataset }: DatasetPageProps) => {
   return (
     <div>
       <NavBar />
-      <SmallHero header={ title } subheader={ description }/>
+      <SmallHero 
+        header={
+          <div className="flex items-center">
+            <span>{title}</span>
+            <FontAwesomeIcon icon={faPen} className="ml-4 text-gray-500 cursor-pointer text-sm" />
+          </div>
+        } 
+        subheader={subtitle}
+      />
       <DatasetMenu onTabChange={setActiveTab} activeTab={activeTab} isDatasetOwner={isOwnedByUser} />
 
       { activeTab === MenuTab.About && <AboutSection datasetId={id} description={description} testDataUrl={testDataUrl} sourceDescription={sourceDescription} acknowledgement={acknowledgement} isOwnedByUser={isOwnedByUser} rows={rows} columns={columns}/> }
       { activeTab === MenuTab.History && <HistorySection /> }
       { activeTab === MenuTab.Discussions && <DiscussionSection />}
       { activeTab === MenuTab.Requests && (user?.id ? <UserRequests userId={user?.id} datasetId={id} isDataOwner={isOwnedByUser} /> : "Please log in.")}
-      { activeTab === MenuTab.Schema && <SchemaSection schema={schema}/>}
+      { activeTab === MenuTab.Schema && <SchemaSection schema={schema} isOwner={isOwnedByUser} />}
 
     </div>
   )
@@ -172,11 +181,9 @@ const AboutSection = (props: AboutSectionProps) => {
     <CryptographicAssets datasetId={datasetId} isOwnedByUser={isOwnedByUser} rows={rows} columns={columns}/>
 
     <div
-      className="flex flex-col flex-grow"
+      className="flex flex-col flex-grow [&_a]:underline"
     >
-      <div>
-      { description }
-      </div>
+      <div dangerouslySetInnerHTML={{ __html: description }} />
       { testDataUrl && (
       <div className="mx-auto m-4">
         <Button onClick={() => window.location.href = testDataUrl}>
@@ -220,6 +227,7 @@ const HistorySection = () => {
 
 type SchemaSectionProps = {
   schema?: Record<any, string>;
+  isOwner: boolean;
 }
 
 type PropertyRowProps = {
@@ -228,8 +236,77 @@ type PropertyRowProps = {
   description: string;
 }
 
-const SchemaSection = ({ schema }: SchemaSectionProps) => {
+const SchemaSection = ({ schema, isOwner }: SchemaSectionProps) => {
+
+    enum SchemaOptions {
+      TEXT = 'text',
+      JSON_FILE = 'json_file',
+    }
+
+    const [schemaOption, setSchemaOption] = useState<SchemaOptions>(SchemaOptions.TEXT);
+    const [newSchema, setNewSchema] = useState<Schema | null>(null);
+    const { register, handleSubmit, formState: { errors } } = useForm<{ schema: string }>();
+
+    const onSchemaSubmit = async (data: { schema: string }) => {
+      // TODO: Implement API call to update schema
+      console.log("Updating schema:", schemaOption === SchemaOptions.TEXT ? data.schema : newSchema);
+    };
+
+    if (isOwner && !schema) {
+      return (
+        <Layout>
+          <div className="mb-8">
+            <h2 className="text-md font-bold mb-4">You have not uploaded a schema for this dataset. Please upload a schema to allow consumers to perform analyses on your data.</h2>
+            <form onSubmit={handleSubmit(onSchemaSubmit)}>
+              <FormItem>
+                <div className="text-xs text-gray-600 mb-2">
+                  Please upload the schema of your data in the <Link href="/" className="underline">JSON schema format</Link>.
+                </div>
+                <FormRadioSelect 
+                  options={[
+                    { value: SchemaOptions.TEXT, label: 'Paste as text' },
+                    { value: SchemaOptions.JSON_FILE, label: 'Upload JSON schema file' },
+                  ]}
+                  onChange={(o) => setSchemaOption(o.value as SchemaOptions)}
+                />
+                {schemaOption === SchemaOptions.TEXT && (
+                  <FormTextArea
+                    errors={errors}
+                    errorMessage="Invalid schema format"
+                    {...register('schema', { required: true })}
+                    placeholder="Copy and paste your data schema here in the JSON schema format"
+                  />
+                )}
+                {schemaOption === SchemaOptions.JSON_FILE && (
+                  <FormFile onChange={(e) => {
+                    if (e.target.files) {
+                      const file = e.target.files[0];
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        try {
+                          const json = JSON.parse(event.target?.result as string);
+                          setNewSchema(json);
+                        } catch (error) {
+                          console.error("Error parsing JSON:", error);
+                        }
+                      };
+                      reader.readAsText(file);
+                    }
+                  }} />
+                )}
+              </FormItem>
+              <Button type="submit" className="mt-4">
+                Update Schema
+              </Button>
+            </form>
+          </div>
+        </Layout>
+      );
+    }
+
   if (!schema) {
+
+    
     return (
       <Layout>
       The owner of this dataset has not provided a schema.

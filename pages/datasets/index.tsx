@@ -96,9 +96,9 @@ const Datasets = () => {
           ))
         }
           </div>
+        <hr />
       </div>
       )}
-      <hr />
       {communityDatasets && (
       <div>
         <h1

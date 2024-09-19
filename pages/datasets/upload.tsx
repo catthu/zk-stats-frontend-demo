@@ -1,4 +1,4 @@
-import Button from "@/components/common/Button";
+import Button, { ButtonVariant } from "@/components/common/Button";
 import Card from "@/components/common/Card";
 import FormWrapper, { FormFile, FormInput, FormItem, FormRadioSelect, FormTextArea } from "@/components/common/Form";
 import Hero from "@/components/common/Hero";
@@ -37,13 +37,13 @@ enum GenerateDataCommitmentOptions {
 
 enum SchemaOptions {
   TEXT = 'text',
-  JSON_FILE = 'json_file'
+  JSON_FILE = 'json_file',
 }
 
 const UploadDataset = () => {
 
-  const [ selectedDataCommitmentOption, setSelectedDataCommitmentOption ] = useState<GenerateDataCommitmentOptions>(GenerateDataCommitmentOptions.NOTEBOOK)
-  const [ schemaOption, setSchemaOption ] = useState<SchemaOptions>(SchemaOptions.TEXT);
+  const [ selectedDataCommitmentOption, setSelectedDataCommitmentOption ] = useState<GenerateDataCommitmentOptions | null>(null)
+  const [ schemaOption, setSchemaOption ] = useState<SchemaOptions | null>(null);
   const [ dataFile, setDataFile ] = useState<File | null>();
   const [ dataCommitmentFile, setDataCommitmentFile ] = useState<File | null>();
   const [ redirecting, setRedirecting ] = useState<boolean>(false);
@@ -69,7 +69,7 @@ const UploadDataset = () => {
       description: data.description,
       ownerId: user?.id,
       //@ts-ignore
-      schema: schemaOption === SchemaOptions.TEXT ? data.schema : schema,
+      schema: schemaOption === SchemaOptions.TEXT ? data.schema : (schemaOption === SchemaOptions.JSON_FILE ? schema : null),
       rows: data.rows,
       columns: data.columns,
     })
@@ -163,29 +163,32 @@ const UploadDataset = () => {
               Please upload the schema of your data in the <Link href="/" className="underline">JSON schema format</Link>.
             </div>
             <FormRadioSelect 
-                  options={[
-                    {
-                      value: SchemaOptions.TEXT,
-                      label: 'Paste as text',
-                    },
-                    {
-                      value: SchemaOptions.JSON_FILE,
-                      label: 'Upload JSON schema file',
-                    },
-                  ]}
-                  onChange={(o) => setSchemaOption(o.value as SchemaOptions)} // TODO fix
-                />
+              options={[
+                {
+                  value: SchemaOptions.TEXT,
+                  label: 'Paste as text',
+                },
+                {
+                  value: SchemaOptions.JSON_FILE,
+                  label: 'Upload JSON schema file',
+                },
+                {
+                  value: '',
+                  label: 'Upload Later',
+                },
+              ]}
+              onChange={(o) => setSchemaOption(o.value as SchemaOptions | null)}
+            />
             {schemaOption === SchemaOptions.TEXT &&
               <FormTextArea
                 errors={errors}
                 errorMessage="text area error"
-                {...register('schema', { required: true })}
+                {...register('schema', { required: false })}
                 placeholder="Copy and paste your data schema here in the JSON schema format"
               />
             }
             {schemaOption === SchemaOptions.JSON_FILE &&
               <FormFile onChange={(e) => {
-                // TODO also option to copy paste
                 if (e.target.files) {
                   const file = e.target.files[0];
                   const reader = new FileReader();
@@ -224,23 +227,25 @@ const UploadDataset = () => {
                 In browser generation is the most convenient option, but will require you to give your browser access to the data. The data will never be uploaded.
                 For a more trustless approach, you can download a Jupyter Notebook and generate the data commitment locally.
               </div>
-                <FormRadioSelect 
-                  options={[
-                    {
-                      value: GenerateDataCommitmentOptions.NOTEBOOK,
-                      label: 'Jupyter Notebook',
-                    },
-                    {
-                      value: GenerateDataCommitmentOptions.BROWSER,
-                      label: 'In Browser',
-                    },
-                  ]}
-                  onChange={(o) => setSelectedDataCommitmentOption(o.value as GenerateDataCommitmentOptions)} // TODO fix
-                />
+              <FormRadioSelect 
+                options={[
+                  {
+                    value: GenerateDataCommitmentOptions.NOTEBOOK,
+                    label: 'Jupyter Notebook',
+                  },
+                  {
+                    value: GenerateDataCommitmentOptions.BROWSER,
+                    label: 'In Browser',
+                  },
+                  {
+                    value: '',
+                    label: 'Upload Later',
+                  },
+                ]}
+                onChange={(o) => setSelectedDataCommitmentOption(o.value as GenerateDataCommitmentOptions | null)}
+              />
 
-              </div>
-              {
-                selectedDataCommitmentOption === GenerateDataCommitmentOptions.BROWSER &&
+              {selectedDataCommitmentOption === GenerateDataCommitmentOptions.BROWSER &&
                 (
                   <div>
                     Select your dataset to generate the data commitment.
@@ -264,8 +269,7 @@ const UploadDataset = () => {
                   </div>
                 )
               }
-              {
-                selectedDataCommitmentOption === GenerateDataCommitmentOptions.NOTEBOOK &&
+              {selectedDataCommitmentOption === GenerateDataCommitmentOptions.NOTEBOOK &&
                 (
                   <div className="flex flex-col">
                     <p>
@@ -283,6 +287,7 @@ const UploadDataset = () => {
                   </div>
                 )
               }
+              </div>
           </FormItem>
           </Card>
           <Button type="submit">

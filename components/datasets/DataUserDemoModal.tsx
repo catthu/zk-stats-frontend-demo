@@ -2,6 +2,8 @@ import Link from "next/link";
 import Button, { ButtonVariant } from "../common/Button";
 import Modal from "../common/Modal";
 
+const DEMO_DATASET_ID = 'd90c21ff-efeb-4ec6-b364-e12f258f6907';
+
 type DataUserDemoModalProps = {
   onClose?: () => void;
 }
@@ -36,7 +38,7 @@ const DataUserDemoModal = ({
       <div className="w-full flex justify-end mt-6">
         <Button
           variant={ButtonVariant.PRIMARY}
-          onClick={() => {}}
+          onClick={() => window.location.href = `/datasets/${DEMO_DATASET_ID}`}
         >Go to the demo dataset</Button>
       </div>
     </Modal>
