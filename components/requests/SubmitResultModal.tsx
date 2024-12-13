@@ -1,5 +1,5 @@
 import Button, { ButtonVariant } from "@/components/common/Button";
-import { FormFile, FormInput } from "@/components/common/Form";
+import { FormFile } from "@/components/common/Form";
 import Modal from "@/components/common/Modal";
 import { useState } from "react";
 

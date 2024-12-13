@@ -13,7 +13,7 @@ import ReviewResultModal from "@/components/requests/ReviewResultModal";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faCircleCheck, faFileAlt, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { extractResult } from "@/utils/ezkl";
+import { extractResult, getVerificationKey, verifyProof } from "@/utils/ezkl";
 import { generateVerifierNotebook } from "@/utils/notebook";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
@@ -64,6 +64,7 @@ const RequestDetail = (props: RequestDetailProps) => {
   const user = useUser();
   const isDatasetOwner = ownerId === user?.id;
 
+
   useEffect(() => {
     if (resultApproved) {
       setStatusColor('bg-green-800');
@@ -79,6 +80,7 @@ const RequestDetail = (props: RequestDetailProps) => {
       setStatusColor('bg-yellow-400 text-gray-900');
       setStatusText('Confirmed, Awaiting Results');
     } 
+
   }, [isCompleted, isAccepted, resultApproved])
 
   const onVerifierNotebookDownload = async () => {
@@ -157,6 +159,81 @@ const RequestDetail = (props: RequestDetailProps) => {
     window.location.reload();
   } 
 
+  const onVerifyResult = async () => {
+    try {
+      // Download necessary files
+      const proofFile = await api(APIEndPoints.DownloadProofAndAssets, {
+        datasetId: dataset.id,
+        requestId: request.id,
+        file: 'proof'
+      });
+      const settingsFile = await api(APIEndPoints.DownloadProofAndAssets, {
+        datasetId: dataset.id,
+        requestId: request.id,
+        file: 'settings'
+      });
+      const precalWitnessFile = await api(APIEndPoints.DownloadProofAndAssets, {
+        datasetId: dataset.id,
+        requestId: request.id,
+        file: 'precal'
+      });
+
+      console.log('settingsFile', settingsFile);
+
+      // Parse the settings file to get the shape and computation
+      const settings = settingsFile ? JSON.parse(await settingsFile.text()) : null;
+      if (!settings) {
+        console.error('Settings file is undefined or empty');
+        return;
+      }
+      const shape = {
+        x: dataset.columns?.toString() || '',
+        y: dataset.rows?.toString()  || ''
+      }
+      //const computation = request.code;
+
+      const computation = request.code
+      .replace(/<[^>]*>/g, '')
+      .normalize('NFKD')
+      .replace(/[\u0080-\uFFFF]/g, '')
+      // Ensure string doesn't start with hyphen
+      .replace(/^-/, '_');
+
+      // Parse the precal witness file
+      const precalWitness = JSON.parse(await precalWitnessFile.text());
+
+      // Get the verification key
+      const verificationKey = shape.x && shape.y && computation && precalWitness ?
+        await getVerificationKey(shape, computation, precalWitness, settings) : null;
+
+      console.log('verificationKey', verificationKey);
+
+      // Convert verification key to ArrayBuffer
+      const verificationKeyBuffer = new TextEncoder().encode(JSON.stringify(verificationKey));
+
+      // Verify the proof
+      const srsPath = '/path/to/srs.bin'; // You'll need to provide the correct path
+      const result = await verifyProof(
+        URL.createObjectURL(proofFile),
+        URL.createObjectURL(settingsFile),
+        URL.createObjectURL(new Blob([verificationKeyBuffer])),
+        srsPath
+      );
+
+      if (result) {
+        console.log('Proof verified successfully');
+        // You can update the UI or state here to reflect the verification result
+      } else {
+        console.log('Proof verification failed');
+        // Handle the case where verification fails
+      }
+    } catch (error) {
+      console.error('Error verifying proof:', error);
+      // Handle any errors that occur during the verification process
+    }
+
+  }
+
   return (
     <div>
  
@@ -197,6 +274,10 @@ const RequestDetail = (props: RequestDetailProps) => {
               {request.result}
             </div>
             <div className="flex mt-4 gap-2">
+              <Button
+                variant={ButtonVariant.PRIMARY}
+                onClick={onVerifyResult}
+              >Verify Result</Button>
               {!isDatasetOwner &&
               <Button
                 variant={ButtonVariant.QUARTERY}

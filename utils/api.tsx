@@ -37,6 +37,8 @@ export enum APIEndPoints {
   SignUp = 'signup',
   SignInWithPassword = 'siginin_with_password',
   SignOut = 'signout',
+
+  DownloadDemoDataset = 'download_demo_dataset',
 }
 
 type GetDatasetOptions = {
@@ -155,7 +157,6 @@ export type Options = undefined
   | CheckFileExistsOptions
   | DownloadDataCommitmentOptions
 
-
 export const api = async (
   endpoint: APIEndPoints,
   options: Options = undefined
@@ -190,6 +191,8 @@ export const api = async (
     case APIEndPoints.SignUp: return signUp(options as SignUpOptions);
     case APIEndPoints.SignInWithPassword: return signInWithPassword(options as SignInWithPasswordOptions);
     case APIEndPoints.SignOut: return signOut();
+    // DEMO
+    case APIEndPoints.DownloadDemoDataset: return downloadDemoDataset();
     default: return getDatasets(); // TODO not really, default should be error
   }
 };
@@ -516,10 +519,10 @@ const downloadProofAndAssets = async ({
   datasetId,
   requestId,
   file
-}: DownloadProofAndAssetsOptions) => {
+}: DownloadProofAndAssetsOptions): Promise<Blob | null> => {
   if (!supabase) {
-    return;
-    // TODO error
+    console.error('Supabase client not initialized');
+    return null;
   }
 
   const getPath = (file: 'all' | 'proof' | 'precal' | 'settings') => {
@@ -538,33 +541,17 @@ const downloadProofAndAssets = async ({
 
   const { publicUrl } = data;
 
-  fetch(publicUrl)
-    .then(response => {
-      if (response.ok) return response.blob();
+  try {
+    const response = await fetch(publicUrl);
+    if (!response.ok) {
       throw new Error('Network response was not ok.');
-    })
-    .then(blob => {
-      // Create an object URL for the blob object
-      const blobUrl = URL.createObjectURL(blob);
-    
-      // Create a temporary anchor element
-      const anchor = document.createElement('a');
-    
-      // Set the href to the object URL
-      anchor.href = blobUrl;
-      anchor.download = `${datasetId}-datacommitment.json`; // Set the download attribute with the desired file name
-    
-      // Append the anchor to the body to make it clickable
-      document.body.appendChild(anchor);
-    
-      // Trigger the download by clicking the anchor
-      anchor.click();
-    
-      // Clean up by revoking the object URL and removing the anchor element
-      URL.revokeObjectURL(blobUrl);
-      anchor.remove();
-    })
-    .catch(error => console.error('Download failed:', error));
+    }
+    const blob = await response.blob();
+    return blob;
+  } catch (error) {
+    console.error('Download failed:', error);
+    return null;
+  }
 }
 
 const approveResult = async ({
@@ -722,3 +709,24 @@ const signOut = async () => {
 
   return { error }
 }
+
+const downloadDemoDataset = async () => {
+  if (!supabase) {
+    return;
+    // TODO error
+  }
+  const { data } = await supabase.storage
+    .from('dataset_previews')
+    .getPublicUrl('onboarding/world_population.csv');
+
+  const { publicUrl } = data;
+
+  return fetch(publicUrl)
+    .then(async response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok.');
+      }
+      return response.text();  // Return the text content
+    });
+}
+

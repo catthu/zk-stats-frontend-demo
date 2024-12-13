@@ -22,6 +22,37 @@ async function loadFileToBuffer(path: string) {
   return await fetch(path).then((res) => res.arrayBuffer());
 }
 
+export const getVerificationKey = async (
+  shape: { x: string, y: string },
+  computation: string,
+  precalWitness: Record<string, number[]>,
+  settings: Record<string, any>
+) => {
+
+  const helperURL = 'http://18.181.203.1:8000/computation_to_vk'
+  const response = await fetch(helperURL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      data_shape: JSON.stringify(shape),
+      computation: computation,
+      precal_witness: JSON.stringify(precalWitness),
+      settings: JSON.stringify(settings)
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  return data.vk;
+};
+
+
 export async function verifyProof(
   proofPath: string,
   settingsPath: string,
