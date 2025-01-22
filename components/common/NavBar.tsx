@@ -6,9 +6,16 @@ import { ReactNode, useState } from "react";
 
 const NavBar = () => {
   const [ showUserMenu, setShowUserMenu ] = useState<boolean>(false);
+  const [ showGuidesMenu, setShowGuidesMenu ] = useState<boolean>(false);
+  
   const onUserMenuClick = () => {
     setShowUserMenu(!showUserMenu);
   }
+
+  const onGuidesMenuClick = () => {
+    setShowGuidesMenu(!showGuidesMenu);
+  }
+  
   const user = useUser();
   return (
     <div
@@ -21,6 +28,17 @@ const NavBar = () => {
         </NavBarItem>
         <NavBarItem>
           <Link href="/about">About</Link>
+        </NavBarItem>
+        <NavBarItem>
+          <div 
+            onClick={onGuidesMenuClick}
+            className="hover:cursor-pointer relative"
+          >
+            <div className="hover:cursor-pointer">
+              Guides
+            </div>
+            {showGuidesMenu && <GuidesMenu show={true} />}
+          </div>
         </NavBarItem>
         </div>
         <div className="flex gap-4 items-center">
@@ -50,6 +68,26 @@ const NavBarItem = ({ children }: {children: ReactNode}) => {
   )
 }
 
+
+type GuidesMenuProps = {
+  show: boolean;
+}
+
+const GuidesMenu = ({ show }: GuidesMenuProps) => {
+  if (!show) return null;
+  
+  return (
+    <div className="flex flex-col absolute left-0 top-full bg-slate-800 p-2 mt-4 rounded min-w-[200px]">
+      <Link href="/onboarding/owner" className="px-8 py-4 hover:text-slate-800 hover:bg-indigo-50 rounded whitespace-nowrap">
+        Data Owner
+      </Link>
+      <Link href="/onboarding/consumer" className="px-8 py-4 hover:text-slate-800 hover:bg-indigo-50 rounded whitespace-nowrap">
+        Data Consumer
+      </Link>
+    </div>
+  )
+}
+
 type UserMenuProps = {
   authenticated: boolean;
 }
@@ -57,8 +95,8 @@ type UserMenuProps = {
 const UserMenu = ({ authenticated }: UserMenuProps) => {
   return (
     <div className="flex flex-col absolute right-0 bg-slate-800 p-2 m-4 rounded">
-      {authenticated && <UserMenuItem label="Account" path="/" />}
-      {authenticated && <UserMenuItem label="Notifications" path="/" />}
+      {authenticated && <UserMenuItem label="Account" path="/account" />}
+      {authenticated && <UserMenuItem label="Notifications" path="/notifications" />}
       <UserMenuItem label="Add a Dataset" path="/datasets/upload" />
       {authenticated
       ? <UserMenuItem label="Sign Out" path="/auth/signout" />

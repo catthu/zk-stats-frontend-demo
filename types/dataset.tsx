@@ -9,6 +9,10 @@ export type DatasetPreview = {
     features: number;
   };
   subtitle?: string;
+  owner: {
+    id: string;
+    username: string;
+  }
 }
 
 export type Dataset = DatasetPreview & {
@@ -42,6 +46,7 @@ export type DatasetResponse = {
   rows?: number;
   columns?: number;
   subtitle?: string;
+  username: string;
 }
 
 export const convertDatasetResponseToDataset = (datasetResponse: DatasetResponse): Dataset => {
@@ -56,6 +61,10 @@ export const convertDatasetResponseToDataset = (datasetResponse: DatasetResponse
     rows: datasetResponse.rows,
     columns: datasetResponse.columns,
     subtitle: datasetResponse.subtitle,
+    owner: {
+      id: datasetResponse.owner_id,
+      username: datasetResponse.username
+    }
   }
 }
 

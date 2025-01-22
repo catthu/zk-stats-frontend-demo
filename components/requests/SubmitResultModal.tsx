@@ -36,7 +36,6 @@ const SubmitResultModal = (props: SubmitResultModalProps) => {
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string)
-        console.log(json['pretty_public_inputs']['rescaled_outputs'].slice(1,).join(','))
         setResult(json['pretty_public_inputs']['rescaled_outputs'].slice(1,).join(', '))
       } catch (error) {
         console.error('Error parsing JSON:', error)

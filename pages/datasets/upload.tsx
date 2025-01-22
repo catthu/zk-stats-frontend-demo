@@ -1,40 +1,14 @@
-import Button, { ButtonVariant } from "@/components/common/Button";
-import Card from "@/components/common/Card";
-import FormWrapper, { FormFile, FormInput, FormItem, FormRadioSelect, FormTextArea } from "@/components/common/Form";
 import Hero from "@/components/common/Hero";
 import Layout from "@/components/common/Layout";
 import NavBar from "@/components/common/NavBar";
 import AddDatasetForm from "@/components/datasets/AddDatasetForm";
 import { Dataset, Schema } from "@/types/dataset";
 import { APIEndPoints, api } from "@/utils/api";
-import { generateDataCommitment, initialize } from "@/utils/ezkl";
 import { useUser } from "@/utils/session";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
-
-const downloadDataCommitmentNotebook = () => {
-  const filePath = '/templates/generate_data_commitment.ipynb';
-
-  fetch(filePath)
-    .then(response => response.blob())
-    .then(blob => {
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'generate_data_commitment.ipynb';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    })
-    .catch(error => console.error('Error downloading file:', error));
-}
-
-enum GenerateDataCommitmentOptions {
-  NOTEBOOK = 'notebook',
-  BROWSER = 'browser',
-}
 
 enum SchemaOptions {
   TEXT = 'text',
@@ -43,16 +17,13 @@ enum SchemaOptions {
 
 const UploadDataset = () => {
 
-  const [ selectedDataCommitmentOption, setSelectedDataCommitmentOption ] = useState<GenerateDataCommitmentOptions | null>(null)
   const [ schemaOption, setSchemaOption ] = useState<SchemaOptions | null>(null);
-  const [ dataFile, setDataFile ] = useState<File | null>();
   const [ dataCommitmentFile, setDataCommitmentFile ] = useState<File | null>();
   const [ redirecting, setRedirecting ] = useState<boolean>(false);
   const [ datasetId, setDatasetId ] = useState<string | null>();
   const [ schema, setSchema ] = useState<Schema | null>(null);
   
-  const { register, handleSubmit, formState } = useForm<Dataset>();
-  const { errors } = formState;
+  const { formState } = useForm<Dataset>();
 
 
   const user = useUser();
@@ -71,8 +42,8 @@ const UploadDataset = () => {
       ownerId: user?.id,
       //@ts-ignore
       schema: schemaOption === SchemaOptions.TEXT ? data.schema : (schemaOption === SchemaOptions.JSON_FILE ? schema : null),
-      rows: data.rows,
-      columns: data.columns,
+      rows: data.rows || undefined,
+      columns: data.columns || undefined,
     })
     if (dataCommitmentFile) {
       await api(APIEndPoints.UploadDataCommitment, {
@@ -110,11 +81,11 @@ type DatasetAddedProps = {
 const DatasetAdded = ({ datasetId }: DatasetAddedProps) => {
   // TODO this needs a trigger, can't be useeffect! like onShow or onVisible or something
   useEffect(() => {
-    setTimeout(() => window.location.href=`${datasetId}`, 2000)
+    setTimeout(() => window.location.href=`/datasets/${datasetId}`, 2000)
   }, [datasetId]);
   return (
     <div>
-      Your dataset has been added. You will be redirected there soon, or click <Link href={`${datasetId}`}>here</Link> to view it.
+      Your dataset has been added. You will be redirected there soon, or click <Link href={`/datasets/${datasetId}`}>here</Link> to view it.
     </div>
   )
 }

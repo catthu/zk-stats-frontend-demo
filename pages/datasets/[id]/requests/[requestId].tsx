@@ -1,5 +1,5 @@
 import Button, { ButtonVariant } from "@/components/common/Button";
-import Hero, { SmallHero } from "@/components/common/Hero";
+import { SmallHero } from "@/components/common/Hero";
 import Layout from "@/components/common/Layout";
 import NavBar from "@/components/common/NavBar";
 import { Dataset, convertDatasetResponseToDataset } from "@/types/dataset";
@@ -10,10 +10,9 @@ import { GetServerSideProps } from "next";
 import { useEffect, useState } from "react";
 import SubmitResultModal from "../../../../components/requests/SubmitResultModal";
 import ReviewResultModal from "@/components/requests/ReviewResultModal";
-import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheckCircle, faCircleCheck, faFileAlt, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { extractResult, getVerificationKey, verifyProof } from "@/utils/ezkl";
+import { faCheckCircle, faCircle, faCircleCheck, faFileAlt, faUser, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { getVerificationKey, verifyProof } from "@/utils/ezkl";
 import { generateVerifierNotebook } from "@/utils/notebook";
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
@@ -26,13 +25,13 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   let request;
   try {
     const datasetResponse = await api(APIEndPoints.GetDataset, { id });
-    dataset = convertDatasetResponseToDataset(datasetResponse[0]);
+    dataset = convertDatasetResponseToDataset(datasetResponse);
 
     const response = await api(APIEndPoints.GetRequest, {
       datasetId: id,
       requestId
     });
-    request = convertRawRequestToFullRequest(response[0]);
+    request = convertRawRequestToFullRequest(response);
   } catch (error) {
     console.error('Failed to fetch dataset', error);
   }
@@ -53,8 +52,8 @@ type RequestDetailProps = {
 
 const RequestDetail = (props: RequestDetailProps) => {
   const { dataset, request } = props;
-  const { id, title, description, testDataUrl, sourceDescription, acknowledgement, ownerId } = dataset;
-  const { isAccepted, isCompleted, resultApproved } = request;
+  const { ownerId } = dataset;
+  const { isAccepted, isCompleted, resultApproved, username } = request;
   const [ isReviewResultModalOpen, setIsReviewResultModalOpen ] = useState<boolean>(false);
   const [ submitResultModalOpen, setSubmitResultModalOpen ] = useState<boolean>(false);
 
@@ -63,7 +62,6 @@ const RequestDetail = (props: RequestDetailProps) => {
   
   const user = useUser();
   const isDatasetOwner = ownerId === user?.id;
-
 
   useEffect(() => {
     if (resultApproved) {
@@ -88,11 +86,9 @@ const RequestDetail = (props: RequestDetailProps) => {
     const notebookBlob = new Blob([notebook], { type: 'application/x-ipynb+json' });
     const url = URL.createObjectURL(notebookBlob);
 
-    console.log('verifier notebook gen')
-
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'verifier.ipynb'; // Set the desired file name
+    link.download = 'verifier.ipynb';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -178,8 +174,6 @@ const RequestDetail = (props: RequestDetailProps) => {
         file: 'precal'
       });
 
-      console.log('settingsFile', settingsFile);
-
       // Parse the settings file to get the shape and computation
       const settings = settingsFile ? JSON.parse(await settingsFile.text()) : null;
       if (!settings) {
@@ -206,13 +200,11 @@ const RequestDetail = (props: RequestDetailProps) => {
       const verificationKey = shape.x && shape.y && computation && precalWitness ?
         await getVerificationKey(shape, computation, precalWitness, settings) : null;
 
-      console.log('verificationKey', verificationKey);
-
       // Convert verification key to ArrayBuffer
       const verificationKeyBuffer = new TextEncoder().encode(JSON.stringify(verificationKey));
 
       // Verify the proof
-      const srsPath = '/path/to/srs.bin'; // You'll need to provide the correct path
+      const srsPath = ''; //TODO we need to get the srs path from the proof
       const result = await verifyProof(
         URL.createObjectURL(proofFile),
         URL.createObjectURL(settingsFile),
@@ -222,7 +214,7 @@ const RequestDetail = (props: RequestDetailProps) => {
 
       if (result) {
         console.log('Proof verified successfully');
-        // You can update the UI or state here to reflect the verification result
+        // TODO
       } else {
         console.log('Proof verification failed');
         // Handle the case where verification fails
@@ -336,7 +328,17 @@ const RequestDetail = (props: RequestDetailProps) => {
               >Download Jupyter Notebook</Button>
             </div>
           </div>
-          </div>
+          
+        </div>
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+              window.location.href = `/user/${user?.id}`
+            }}>
+              <span className="fa-layers fa-fw h-6 w-6" style={{ backgroundColor: 'transparent' }}>
+                  <FontAwesomeIcon icon={faCircle} size="2x" className="text-white mx-auto w-full"/>
+                  <FontAwesomeIcon icon={faUser} className="text-gray-800 mx-auto w-full"/>
+              </span>
+              <span className="text-gray-600 text-sm">{username}</span>
+            </div>
         </div>
       </Layout>
     </div>
@@ -458,27 +460,6 @@ const ConsumerActionBar = (props: ActionBarProps) => {
     await api(APIEndPoints.ApproveResult, { requestId: request.id });
     setIsReviewResultModalOpen(false);
     window.location.reload();
-  }
-
-  const onClickVerifyComputation = () => {
-
-  }
-
-  const onVerifierNotebookDownload = async () => {
-    const notebook = await generateVerifierNotebook(request.code);
-    const notebookBlob = new Blob([notebook], { type: 'application/x-ipynb+json' });
-    const url = URL.createObjectURL(notebookBlob);
-
-    console.log('verifier notebook gen')
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'verifier.ipynb'; // Set the desired file name
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
   }
 
   return (

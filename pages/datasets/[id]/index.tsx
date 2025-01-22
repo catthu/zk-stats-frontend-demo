@@ -1,4 +1,4 @@
-import Hero, { SmallHero } from "@/components/common/Hero";
+import { SmallHero } from "@/components/common/Hero";
 import { APIEndPoints, api } from "@/utils/api";
 import { GetServerSideProps } from "next";
 import { ReactNode, useEffect, useRef, useState } from "react";
@@ -8,10 +8,9 @@ import { Dataset, Schema, convertDatasetResponseToDataset } from "@/types/datase
 import Layout from "@/components/common/Layout";
 import NavBar from "@/components/common/NavBar";
 import { useUser } from "@/utils/session";
-import { OwnerRequests } from "@/components/requests/OwnerRequests";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faColumns, faEdit, faFileAlt, faPen, faPencilAlt, faSquare, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faCircle, faColumns, faEdit, faFileAlt, faPen, faPencilAlt, faSquare, faUser, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FormFile, FormItem, FormRadioSelect, FormTextArea } from "@/components/common/Form";
 import { useForm } from "react-hook-form";
 
@@ -20,12 +19,21 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     id: string;
   }
 
-  let dataset;
+  let dataset = null;
   try {
     const response = await api(APIEndPoints.GetDataset, { id });
-    dataset = convertDatasetResponseToDataset(response[0]);
+    
+    if (!response) {
+      console.error('Invalid API response:', response);
+      return { notFound: true };
+    }
+    
+    dataset = convertDatasetResponseToDataset(response);
   } catch (error) {
-    console.error('Failed to fetch dataset', error);
+    console.error('Failed to fetch dataset:', error);
+    return {
+      notFound: true
+    }
   }
 
   return {
@@ -33,11 +41,10 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       dataset,
     }
   }
-
 }
 
 type DatasetPageProps = {
-  dataset: Dataset;
+  dataset: Dataset | null;
 }
 
 enum MenuTab {
@@ -49,10 +56,13 @@ enum MenuTab {
 }
 
 const DatasetPage = ({ dataset }: DatasetPageProps) => {
-  const { id, title, subtitle, description, testDataUrl, sourceDescription, acknowledgement, ownerId, schema, rows, columns } = dataset;
   const [ activeTab, setActiveTab ] = useState<MenuTab>(MenuTab.About);
-
   const user = useUser();
+  
+  if (!dataset) return null;
+  
+  const { id, title, subtitle, description, testDataUrl, sourceDescription, acknowledgement, ownerId, schema, rows, columns, owner } = dataset;
+
 
   const isOwnedByUser = ownerId === user?.id;
 
@@ -70,7 +80,7 @@ const DatasetPage = ({ dataset }: DatasetPageProps) => {
       />
       <DatasetMenu onTabChange={setActiveTab} activeTab={activeTab} isDatasetOwner={isOwnedByUser} />
 
-      { activeTab === MenuTab.About && <AboutSection datasetId={id} description={description} testDataUrl={testDataUrl} sourceDescription={sourceDescription} acknowledgement={acknowledgement} isOwnedByUser={isOwnedByUser} rows={rows} columns={columns}/> }
+      { activeTab === MenuTab.About && <AboutSection datasetId={id} description={description} testDataUrl={testDataUrl} sourceDescription={sourceDescription} acknowledgement={acknowledgement} isOwnedByUser={isOwnedByUser} rows={rows} columns={columns} owner={owner}/> }
       { activeTab === MenuTab.History && <HistorySection /> }
       { activeTab === MenuTab.Discussions && <DiscussionSection />}
       { activeTab === MenuTab.Requests && (user?.id ? <UserRequests userId={user?.id} datasetId={id} isDataOwner={isOwnedByUser} /> : "Please log in.")}
@@ -169,15 +179,28 @@ type AboutSectionProps = {
   isOwnedByUser?: boolean;
   rows?: number;
   columns?: number;
+  owner: {
+    id: string;
+    username: string;
+  }
 }
 
 const AboutSection = (props: AboutSectionProps) => {
-  const { datasetId, description, testDataUrl, sourceDescription, acknowledgement, isOwnedByUser, rows, columns } = props;
+  const { datasetId, description, testDataUrl, sourceDescription, acknowledgement, isOwnedByUser, rows, columns, owner } = props;
   return (
   <Layout>
   <div
     className="flex flex-col w-full space-between gap-4"
   >
+    <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+      window.location.href = `/user/${owner?.id}`
+    }}>
+        <span className="fa-layers fa-fw h-6 w-6" style={{ backgroundColor: 'transparent' }}>
+            <FontAwesomeIcon icon={faCircle} size="2x" className="text-white mx-auto w-full"/>
+            <FontAwesomeIcon icon={faUser} className="text-gray-800 mx-auto w-full"/>
+        </span>
+        <span className="text-gray-600 text-sm">{owner?.username}</span>
+      </div>
     <CryptographicAssets datasetId={datasetId} isOwnedByUser={isOwnedByUser} rows={rows} columns={columns}/>
 
     <div

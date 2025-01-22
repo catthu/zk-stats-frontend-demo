@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Button, { ButtonVariant } from "@/components/common/Button";
-import { RawRequest, RequestPreview, RequestStatus, convertRawRequestToFullRequest } from "@/types/request";
+import { RawRequest, RequestPreview, convertRawRequestToFullRequest } from "@/types/request";
 import { APIEndPoints, api } from "@/utils/api";
 import Link from "next/link";
 import Layout from "../common/Layout";
 import NewRequest from "./NewRequest";
 import RequestSubmitted from "./RequestSubmitted";
 import { FormInput } from "../common/Form";
+import { faCircle } from '@fortawesome/free-solid-svg-icons';
+import { faUser } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type UserRequestsProps = {
   userId: string;
@@ -83,7 +86,7 @@ export const UserRequests = ({ userId, datasetId, isDataOwner }: UserRequestsPro
       {!isLoading && !error && activeView === ActiveView.RequestList && (
         <div className="space-y-4">
           {filteredRequests.map((request) => (
-            <RequestRow key={request.id} {...request} />
+            <RequestRow key={request.id} {...request} userId={userId} username={request.username}/>
           ))}
         </div>
       )}
@@ -150,7 +153,9 @@ const RequestRow = ({
   id,
   isAccepted,
   isCompleted,
-  resultApproved
+  resultApproved,
+  userId,
+  username
 }: RequestPreview) => {
   let statusColor = 'bg-gray-400';
   let statusText = 'Awaiting Confirmation';
@@ -169,22 +174,32 @@ const RequestRow = ({
   }
 
   return (
-<div className="bg-gray-50 border-1 border-gray-200 hover:bg-indigo-100 rounded-lg p-4 mb-2">
-  <Link href={`/datasets/${datasetId}/requests/${id}`}>
-    <div className="flex flex-col sm:flex-row gap-4 items-center">
-      <div className="flex items-center gap-4 w-full">
-        <div className={`text-xs ${statusColor} rounded-full px-3 py-1 text-white w-1/6 flex justify-center items-center`}>
-          {statusText}
+    <div className="bg-gray-50 border-1 border-gray-200 hover:bg-indigo-100 rounded-lg p-4 mb-2">
+      <Link href={`/datasets/${datasetId}/requests/${id}`}>
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex items-center gap-4 w-full">
+            <div className={`text-xs ${statusColor} rounded-full px-3 py-1 text-white w-1/6 flex justify-center items-center`}>
+              {statusText}
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 w-2/6">
+              {title}
+            </h3>
+            <div className="text-sm text-gray-600 w-3/6">
+              {description}
+            </div>
+            <div className="flex items-center gap-2 cursor-pointer mr-4" onClick={(e) => {
+              e.preventDefault();
+              window.location.href = `/user/${userId}`;
+            }}>
+              <span className="fa-layers fa-fw h-6 w-6" style={{ backgroundColor: 'transparent' }}>
+                <FontAwesomeIcon icon={faCircle} size="2x" className="text-white mx-auto w-full"/>
+                <FontAwesomeIcon icon={faUser} className="text-gray-800 mx-auto w-full"/>
+              </span>
+              <span className="text-gray-600 text-sm">{username}</span>
+            </div>
+          </div>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 w-2/6">
-          {title}
-        </h3>
-        <div className="text-sm text-gray-600 w-3/6">
-          {description}
-        </div>
-      </div>
+      </Link>
     </div>
-  </Link>
-</div>
   );
 };

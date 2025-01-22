@@ -1,20 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/common/Layout';
 import NavBar from '@/components/common/NavBar';
 import OnboardingProgressSidebar from '@/components/onboarding/OnboardingProgressSidebar';
 import { OwnerOnboarding } from '@/types/onboarding';
-import { SmallHero } from '@/components/common/Hero';
 import Button from '@/components/common/Button';
 
 const OwnerOnboardingPage: React.FC = () => {
   const [currentStageId, setCurrentStageId] = useState(OwnerOnboarding.stages[0].id);
   const [currentStepId, setCurrentStepId] = useState(OwnerOnboarding.stages[0].steps[0].id);
 
-
-  // useEffect(() => {
-  //   setCurrentStageId('add-dataset');
-  //   setCurrentStepId('data-commitment');
-  // }, [currentStageId, currentStepId]);
 
   return (
     <div>

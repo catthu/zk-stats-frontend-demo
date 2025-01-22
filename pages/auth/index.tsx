@@ -55,33 +55,17 @@ const AuthForm = () => {
     }
   }
 
-  const onForgotPassword: MouseEventHandler<HTMLButtonElement> = async (e) => {
-    e.preventDefault();
-    // setApiError(null);
-    // const { usernameOrEmail } = watch();
-    // if (!usernameOrEmail) {
-    //   setApiError("Please enter your username or email address.");
-    //   return;
-    // }
-    // try {
-    //   await api(APIEndPoints.ForgotPassword, { usernameOrEmail });
-    //   setApiError("Password reset instructions sent to your email.");
-    // } catch (error) {
-    //   setApiError("Failed to send password reset email. Please try again.");
-    // }
-  }
-
   return (
     <FormWrapper>
       {apiError && <div className="text-red-500 mb-4">{apiError}</div>}
       <div>
         <FormItem>
-          <div>Username or Email</div>
+          <div>Email</div>
           <FormInput 
             errors={errors}
             errorMessage={errors.usernameOrEmail?.message as string}
             {...register('usernameOrEmail', {
-              required: "Username or Email is required",
+              required: "Email is required",
               validate: (value) => {
                 const emailPattern = /\S+@\S+\.\S+/;
                 if (!emailPattern.test(value) && value.length < 3) {
@@ -111,10 +95,14 @@ const AuthForm = () => {
         </FormItem>
       </div>
       <div className="flex gap-8">
-        <Button onClick={onSignUp}>Sign Up</Button>
         <Button onClick={onSignIn}>Sign In</Button>
+        <Button onClick={onSignUp} variant={ButtonVariant.SECONDARY}>Sign Up</Button>
+
         <Button 
-          onClick={onForgotPassword}
+          onClick={(e) => {
+            e.preventDefault();
+            router.push('/auth/forgot-password');
+          }}
           variant={ButtonVariant.TERTIARY}
         >Forgot Password</Button>
       </div>

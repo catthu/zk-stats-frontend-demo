@@ -5,7 +5,7 @@ import Layout from "@/components/common/Layout";
 import DataOwnerDemoModal from "@/components/datasets/DataOwnerDemoModal";
 import { DatasetCard } from "@/components/datasets/DatasetCard";
 import DataUserDemoModal from "@/components/datasets/DataUserDemoModal";
-import { Dataset, DatasetPreview, DatasetResponse, convertDatasetResponseToDataset } from "@/types/dataset";
+import { Dataset, DatasetResponse, convertDatasetResponseToDataset } from "@/types/dataset";
 import { APIEndPoints, api } from "@/utils/api";
 import { useUser } from "@/utils/session";
 import { faExternalLink } from "@fortawesome/free-solid-svg-icons";
@@ -65,7 +65,6 @@ const Datasets = () => {
     </div>
   )
 
-  
 
   return (
     <div>

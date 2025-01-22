@@ -91,18 +91,7 @@ const NewRequestForm = (props: NewRequestProps) => {
             def computation(s: State, data: list[torch.Tensor]) -&gt; torch.Tensor:&#13;&nbsp;&nbsp;Test
           </FormTextArea>
         </FormItem>
-        </div>
-        {/* 
-          // LATER
-        <div
-          className="bg-gray-50 rounded p-4 mb-4 border-2 border-gray-100"
-        >
-        <FormItem>
-          Aggregate
-          <FormSelect options={[{value: 'Test', label: 'test'}, {value: 'test2 ', label: 'test2'}]}/>
-        </FormItem>
-        </div> */}
-        
+        </div>        
         <Button type="submit">Submit</Button>
       </FormWrapper>
     </div>

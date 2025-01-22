@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import Button from "@/components/common/Button";
-import { FormFile, FormItem, FormRadioSelect } from "@/components/common/Form";
+import { FormItem, FormRadioSelect } from "@/components/common/Form";
 import DataCommitmentBrowser from './DataCommitmentBrowser';
 import DataCommitmentNotebook from './DataCommitmentNotebook';
 
@@ -23,9 +22,36 @@ const DataCommitmentSection: React.FC<DataCommitmentSectionProps> = ({
   allowUploadLater = true
 }) => {
   const [selectedDataCommitmentOption, setSelectedDataCommitmentOption] = useState<GenerateDataCommitmentOptions | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const downloadDataCommitmentNotebook = () => {
-    // Implementation of downloadDataCommitmentNotebook function
+  const downloadDataCommitmentNotebook = async () => {
+    setIsDownloading(true);
+    try {
+      const link = document.createElement('a');
+      link.href = '/templates/generate_data_commitment.ipynb';
+      link.download = 'generate_data_commitment.ipynb';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const downloadDataCommitment = (content: string) => {
+    try {
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'data_commitment.txt';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading data commitment:', error);
+    }
   };
 
   return (
@@ -61,7 +87,10 @@ const DataCommitmentSection: React.FC<DataCommitmentSectionProps> = ({
       />
 
       {selectedDataCommitmentOption === GenerateDataCommitmentOptions.BROWSER && (
-        <DataCommitmentBrowser onFileChange={onFileChange} />
+        <DataCommitmentBrowser 
+          onFileChange={onFileChange} 
+          onGenerateComplete={downloadDataCommitment}
+        />
       )}
       {selectedDataCommitmentOption === GenerateDataCommitmentOptions.NOTEBOOK && (
         <DataCommitmentNotebook 

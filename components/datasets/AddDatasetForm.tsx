@@ -28,7 +28,7 @@ const AddDatasetForm: React.FC<AddDatasetFormProps> = ({ onSubmit, initialDatase
       <Card>
         <FormItem>
           <div className="mb-2 text-md font-medium text-gray-900">
-            Dataset Title
+            Dataset Title (*)
           </div>
           <FormInput
             errors={errors}
@@ -39,7 +39,7 @@ const AddDatasetForm: React.FC<AddDatasetFormProps> = ({ onSubmit, initialDatase
         </FormItem>
         <FormItem>
           <div className="mb-2 text-md font-medium text-gray-900">
-            Dataset Description
+            Dataset Description (*)
           </div>
           <FormTextArea
             errors={errors}

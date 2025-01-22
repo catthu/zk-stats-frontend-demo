@@ -30,7 +30,6 @@ const Hero = (props: HeroProps) => {
 
 export const SmallHero = (props: HeroProps) => {
   const { breadcrumb, header, subheader } = props;
-  // TODO ADD BREADCRUMB 
   return (
     <div className="px-24 py-8 md:py-8 lg:py-8 text-start">
       {breadcrumb?.length && 

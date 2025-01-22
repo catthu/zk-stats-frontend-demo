@@ -1,4 +1,7 @@
 import { DatasetPreview } from '@/types/dataset';
+import { faCircle } from '@fortawesome/free-solid-svg-icons';
+import { faUser } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Link from 'next/link';
 
 type DatasetCardProps = {
@@ -7,7 +10,7 @@ type DatasetCardProps = {
 
 export const DatasetCard = (props: DatasetCardProps) => {
   const { dataset } = props;
-  const { id, title, subtitle, description, updatedAt } = dataset;
+  const { id, title, subtitle, description, updatedAt, owner } = dataset;
   
   return (
     <Link href={`/datasets/${id}`}>
@@ -23,11 +26,20 @@ export const DatasetCard = (props: DatasetCardProps) => {
         <p className="text-gray-600">
           {description.length > 100 ? `${description.slice(0, 100)}...` : description}
         </p>
-        <p className="text-gray-400 text-xs my-2">Updated on {updatedAt}</p>
+        <div className="flex justify-between items-center">
+          <p className="text-gray-400 text-xs my-2">Updated on {updatedAt}</p>
+        </div>
+        {owner && (
+        <div className="flex items-center gap-2">
+        <span className="fa-layers fa-fw h-6 w-6" style={{ backgroundColor: 'transparent' }}>
+            <FontAwesomeIcon icon={faCircle} size="2x" className="text-white mx-auto w-full"/>
+            <FontAwesomeIcon icon={faUser} className="text-gray-800 mx-auto w-full"/>
+            </span>
+            <span className="text-gray-600 text-sm">{owner?.username}</span>
+          </div>
+        )}
       </div>
     </div>
     </Link>
   )
 }
-
-// TODO NEXT: create mock data according to chatgpt and import them to use here

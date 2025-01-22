@@ -37,8 +37,11 @@ export enum APIEndPoints {
   SignUp = 'signup',
   SignInWithPassword = 'siginin_with_password',
   SignOut = 'signout',
+  ResetPassword = 'reset_password',
+  UpdateAccountSettings = 'update_account_settings',
 
   DownloadDemoDataset = 'download_demo_dataset',
+  GetUserWithDatasetsAndRequests = 'get_user_with_datasets_and_requests',
 }
 
 type GetDatasetOptions = {
@@ -139,6 +142,21 @@ type DownloadDataCommitmentOptions = {
   datasetId: string;
 }
 
+type UpdateAccountSettingsOptions = {
+  username?: string;
+  email?: string;
+  password?: string;
+  repeatPassword?: string;
+}
+
+type ResetPasswordOptions = {
+  email: string;
+}
+
+type GetUserWithDatasetsAndRequestsOptions = {
+  userId: string;
+}
+
 export type Options = undefined
   | GetDatasetOptions
   | AddDatasetOptions
@@ -156,6 +174,9 @@ export type Options = undefined
   | ApproveResultOptions
   | CheckFileExistsOptions
   | DownloadDataCommitmentOptions
+  | UpdateAccountSettingsOptions
+  | ResetPasswordOptions
+  | GetUserWithDatasetsAndRequestsOptions
 
 export const api = async (
   endpoint: APIEndPoints,
@@ -193,6 +214,10 @@ export const api = async (
     case APIEndPoints.SignOut: return signOut();
     // DEMO
     case APIEndPoints.DownloadDemoDataset: return downloadDemoDataset();
+    case APIEndPoints.UpdateAccountSettings: return updateAccountSettings(options as UpdateAccountSettingsOptions);
+    case APIEndPoints.ResetPassword: return resetPassword(options as ResetPasswordOptions);
+    case APIEndPoints.GetUserWithDatasetsAndRequests: 
+      return getUserWithDatasetsAndRequests(options as GetUserWithDatasetsAndRequestsOptions);
     default: return getDatasets(); // TODO not really, default should be error
   }
 };
@@ -203,14 +228,12 @@ const getDataset = async (options: GetDatasetOptions) => {
     // TODO throw error
   }
   const { data, error } = await supabase
-    .from('datasets')
-    .select('*')
-    .filter('id', 'eq', options.id)
+    .rpc('get_dataset', { dataset_id: options.id })
+  
   if (data) {
-    return data;
+    return data[0]; // Since we expect a single result
   }
-  return Promise.resolve([])
-
+  return Promise.resolve(null)
 }
 
 const addDataset = async (options: AddDatasetOptions) => {
@@ -241,8 +264,8 @@ const getDatasets = async () => {
     // TODO throw error
   }
   const { data, error } = await supabase
-    .from('datasets')
-    .select('*')
+    .rpc('get_datasets')
+
   if (data) {
     return data;
   }
@@ -250,20 +273,19 @@ const getDatasets = async () => {
 }
 
 const getRequest = async (options: GetRequestOptions) => {
-
   if (!supabase) {
     return;
     // TODO error
   }
 
+
   const { data, error } = await supabase
-    .from('computations')
-    .select('*')
-    .filter('dataset_id', 'eq', options.datasetId)
-    .filter('id', 'eq', options.requestId)
+    .rpc('get_request', { 
+      id: options.requestId 
+    })
   
 if (data) {
-  return data
+  return data[0]
 }
 }
 
@@ -304,25 +326,18 @@ const getRequests = async(options: GetRequestsOptions) => {
     return;
     // TODO error
   }
-  if (options.userId) {
-    const { data, error } = await supabase
-      .from('computations')
-      .select('*')
-      .filter('user_id', 'eq', options.userId)
-      .filter('dataset_id', 'eq', options.datasetId)
-      if (data) {
-        return data
-      }
-  } else {
-    const { data, error } = await supabase
-      .from('computations')
-      .select('*')
-      .filter('dataset_id', 'eq', options.datasetId)
-    // TODO actual owner verification security
-    if (data) {
-      return data
-    }
+
+  const { data, error } = await supabase
+    .rpc('get_requests', { 
+      dataset_id: options.datasetId,
+      user_id: options.userId || null
+    })
+
+  if (error) {
+    console.error('Supabase query error:', error);
+    return [];
   }
+  return data || [];
 }
 
 const downloadComputationNotebook = async ({ requestId }: DownloadComputationNotebookOptions) => {
@@ -595,8 +610,6 @@ const checkFileExists = async({
       .from(bucketName)
       .list(filePath)
 
-    console.log('dddd', bucketName, filePath, data)
-
     if (error) {
       console.error('Error listing files:', error)
       return false
@@ -710,6 +723,76 @@ const signOut = async () => {
   return { error }
 }
 
+const resetPassword = async ({ email }: ResetPasswordOptions) => {
+  if (!supabase) {
+    return { error: 'Database client not loaded.' };
+  }
+
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/auth/reset-password`,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+
+const updateAccountSettings = async ({ username, email, password, repeatPassword }: UpdateAccountSettingsOptions) => {
+  if (!supabase) {
+    return { error: 'Database client not loaded.' };
+  }
+
+  try {
+    // Get current user data
+    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !currentUser) {
+      return { error: 'No user logged in.' };
+    }
+
+    let updates = [];
+
+    // Update email/password if provided
+    if (email || password) {
+      if (password && password !== repeatPassword) {
+        return { error: 'Passwords do not match.' };
+      }
+
+      // TODO thse calls don't work, debug
+    
+      const { data, error } = await supabase.auth.updateUser({
+        ...(email && { email }),
+        ...(password && { password })
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+      updates.push('auth');
+    }
+
+    // Update username if provided
+    if (username) {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ username })
+        .eq('user_id', currentUser.id)
+        .select();
+
+      if (error) {
+        return { error: error.message };
+      }
+      updates.push('username');
+    }
+
+    return { data: { updated: updates }, error: null };
+  } catch (error) {
+    return { error: 'Failed to update account settings.' };
+  }
+}
+
 const downloadDemoDataset = async () => {
   if (!supabase) {
     return;
@@ -730,3 +813,49 @@ const downloadDemoDataset = async () => {
     });
 }
 
+const getUserWithDatasetsAndRequests = async ({ userId }: GetUserWithDatasetsAndRequestsOptions) => {
+  if (!supabase) {
+    return { error: 'Database client not loaded.' };
+  }
+
+  // Get user details
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('username, created_at')
+    .eq('user_id', userId)
+    .single();
+
+  if (userError) {
+    return { error: userError.message };
+  }
+
+  // Get user's datasets
+  const { data: datasets, error: datasetsError } = await supabase
+    .from('datasets')
+    .select('*')
+    .eq('owner_id', userId);
+
+  if (datasetsError) {
+    return { error: datasetsError.message };
+  }
+
+  // Get user's requests
+  const { data: requests, error: requestsError } = await supabase
+    .from('computations')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (requestsError) {
+    return { error: requestsError.message };
+  }
+
+  return {
+    data: {
+      username: userData.username,
+      created_at: userData.created_at,
+      datasets: datasets || [],
+      requests: requests || []
+    },
+    error: null
+  };
+}

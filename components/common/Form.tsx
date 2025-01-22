@@ -1,6 +1,5 @@
 import React, { ChangeEvent, FormHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes, useState } from "react";
 import ReactSelect, { SingleValue } from "react-select";
-import Button from "./Button";
 
 type FormInputProps = {
   errors?: any; // TODO
@@ -26,8 +25,12 @@ type FormTextAreaProps = {
 
 export const FormTextArea = React.forwardRef<HTMLTextAreaElement, FormTextAreaProps>(({errors, errorMessage, className, ...props}: FormTextAreaProps, ref) => {
   return (
-    <div>
-      <textarea ref={ref} className={`border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 ${className}`} {...props}>
+    <div className="h-full">
+      <textarea 
+        ref={ref} 
+        className={`border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 ${className}`} 
+        {...props}
+      >
         {props.children}
       </textarea>
       {(props?.name && errors[props.name]) && <span>{ errorMessage }</span>}
