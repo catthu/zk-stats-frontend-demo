@@ -1,0 +1,5 @@
+CREATE TABLE users (id bigint NOT NULL, created_at timestamp with time zone NOT NULL DEFAULT now(), user_id uuid NOT NULL, username text NOT NULL);
+
+CREATE TABLE datasets (id uuid NOT NULL DEFAULT gen_random_uuid(), created_at timestamp with time zone NOT NULL DEFAULT now(), updated_at date NOT NULL DEFAULT now(), owner_id uuid NOT NULL, schema json, rows bigint, columns bigint, unlisted boolean NOT NULL DEFAULT false, private boolean NOT NULL DEFAULT false, title text NOT NULL, description text NOT NULL, subtitle text);
+
+CREATE TABLE computations (user_id uuid NOT NULL DEFAULT auth.uid(), is_accepted boolean NOT NULL DEFAULT false, is_completed boolean NOT NULL DEFAULT false, result_approved boolean NOT NULL DEFAULT false, updated_at timestamp with time zone NOT NULL DEFAULT now(), id uuid NOT NULL DEFAULT gen_random_uuid(), created_at timestamp with time zone NOT NULL DEFAULT now(), dataset_id uuid NOT NULL, title text NOT NULL, code text NOT NULL, description text, result text);

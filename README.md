@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# SELF-HOSTING INSTRUCTIONS
 
-## Getting Started
+## FRONT END
 
-First, run the development server:
+This project was written in Next.js. I hosted the fronend on Vercel; you can do the same by cloning it and hosting it on your Vercel account. But any other front end hosting should work.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## BACKEND
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The backend was hosted serverlessly with Supabase. This is the easiest way to get started quickly. With a bit more modifications, you can use any other severless backend services.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### ENVIRONMENT VARIABLES
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Assuming you're also hosting on Supabase, you will need to set the following environment variables:
 
-## Learn More
+- `NEXT_PUBLIC_SUPABASE_URL` - the URL of your Supabase instance
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - the anon key of your Supabase instance
 
-To learn more about Next.js, take a look at the following resources:
+Ideally these env vars should be modified to be used only in the backend (e.g 'api') part of the Next project.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### DATABASE SCHEMA
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Three different tables are used, the schema to recreate them is in `database/schema.sql`.
 
-## Deploy on Vercel
+### SQL FUNCTIONS
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Some database operations use Supabase SQL functions. The SQL functions are in `database/sql_functions.sql`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+### STORAGE
+
+This project use storage to store Jupyter notebooks and cryptraphic files generated in the proving / verification process.
+
+The storage is handled by Supabase, but another storage solution such as S3 can also be used. The storage structure is dtailed in `database.storage.md`.
+
+### AUTHENTICATION
+
+Authentication is handled by Supabase auth.
+
