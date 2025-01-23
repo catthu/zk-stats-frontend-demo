@@ -522,12 +522,8 @@ const uploadProofAndAssets = async ({
     supabase.storage.from('proof_assets').upload(`${datasetId}/${requestId}/precal_witness.json`, precalWitnessFile),
     supabase.storage.from('proof_assets').upload(`${datasetId}/${requestId}/settings.json`, settingsFile)
   ];
-  // const { data, error } = await supabase.storage
-  //   .from('proof_assets')
-  //   .upload(`${datasetId}/${requestId}/testfile`, file[0]);
-  // if (data) {
-  //   return data
-  // }
+
+  return Promise.all(promises);
 }
 
 const downloadProofAndAssets = async ({

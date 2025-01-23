@@ -59,6 +59,8 @@ export async function verifyProof(
   verificationKeyPath: string,
   srsPath: string,
 ) {
+  await initialize();
+  
   const [proof, settings, verificationKey, srs] = await Promise.all([
       loadFileToBuffer(proofPath),
       loadFileToBuffer(settingsPath),

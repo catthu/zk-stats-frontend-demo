@@ -56,6 +56,8 @@ const RequestDetail = (props: RequestDetailProps) => {
   const { isAccepted, isCompleted, resultApproved, username } = request;
   const [ isReviewResultModalOpen, setIsReviewResultModalOpen ] = useState<boolean>(false);
   const [ submitResultModalOpen, setSubmitResultModalOpen ] = useState<boolean>(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   const [statusColor, setStatusColor] = useState<string>("bg-gray-400");
   const [statusText, setStatusText] = useState<string>("Awaiting Confirmation")
@@ -134,28 +136,36 @@ const RequestDetail = (props: RequestDetailProps) => {
     settingsFile
   }: onSubmitResultArgs) => {
 
-
-    if ( proofFile && precalWitnessFile && settingsFile ) {
-  
-      await api(APIEndPoints.UploadProofAndAssets, {
-        requestId: request.id,
-        proofFile,
-        precalWitnessFile,
-        settingsFile
-      }).then((data) => {
-        api(APIEndPoints.SubmitRequestResult, {
+    if (proofFile && precalWitnessFile && settingsFile) {
+      try {
+        await api(APIEndPoints.UploadProofAndAssets, {
+          datasetId: dataset.id,
           requestId: request.id,
-          result,
+          proofFile,
+          precalWitnessFile,
+          settingsFile
+        }).then((data) => {
+          return api(APIEndPoints.SubmitRequestResult, {
+            requestId: request.id,
+            result,
+          })
         })
-      })
+        setSubmitResultModalOpen(false);
+        window.location.reload();
+      } catch (error) {
+        console.error('Error uploading files:', error);
+        // You might want to show an error message to the user here
+      }
     } else {
-      // TODO handle errors
+      console.error('Missing required files');
+      // You might want to show an error message to the user here
     }
-    setSubmitResultModalOpen(false);
-    window.location.reload();
   } 
 
   const onVerifyResult = async () => {
+    setIsVerifying(true);
+    setVerificationError(null);
+    
     try {
       // Download necessary files
       const proofFile = await api(APIEndPoints.DownloadProofAndAssets, {
@@ -177,8 +187,7 @@ const RequestDetail = (props: RequestDetailProps) => {
       // Parse the settings file to get the shape and computation
       const settings = settingsFile ? JSON.parse(await settingsFile.text()) : null;
       if (!settings) {
-        console.error('Settings file is undefined or empty');
-        return;
+        throw new Error('Settings file is undefined or empty');
       }
       const shape = {
         x: dataset.columns?.toString() || '',
@@ -214,16 +223,16 @@ const RequestDetail = (props: RequestDetailProps) => {
 
       if (result) {
         console.log('Proof verified successfully');
-        // TODO
+        // TODO: Show success message to user
       } else {
-        console.log('Proof verification failed');
-        // Handle the case where verification fails
+        throw new Error('Proof verification failed');
       }
     } catch (error) {
       console.error('Error verifying proof:', error);
-      // Handle any errors that occur during the verification process
+      setVerificationError(error instanceof Error ? error.message : 'Failed to verify proof');
+    } finally {
+      setIsVerifying(false);
     }
-
   }
 
   return (
@@ -265,11 +274,21 @@ const RequestDetail = (props: RequestDetailProps) => {
             <div className="bg-gray-100 rounded text-sm font-light p-2">
               {request.result}
             </div>
+            {verificationError && (
+                <div className="text-red-500 text-sm mt-2">
+                  <FontAwesomeIcon icon={faWarning} className="mr-2" />
+                  {verificationError}
+                </div>
+              )}
             <div className="flex mt-4 gap-2">
               <Button
                 variant={ButtonVariant.PRIMARY}
                 onClick={onVerifyResult}
-              >Verify Result</Button>
+                disabled={isVerifying}
+              >
+                {isVerifying ? 'Verifying...' : 'Verify Result'}
+              </Button>
+              
               {!isDatasetOwner &&
               <Button
                 variant={ButtonVariant.QUARTERY}
